@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Aprender Jugando 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea:#2e6ca4; --sea2:#1f5384;
+    --grass:#6aab4a; --grass2:#5b9a3d;
+    --sand:#e6cf8f; --path:#b0814e; --path2:#9a6f40;
+    --snow:#dfe9f2; --snow2:#c3d4e4;
+    --rock:#9aa0a6;
+    --wood:#3a2a1c; --wood2:#4d3826;
+    --cream:#f5ecd6; --gold:#e6a52c; --leaf:#7ac24a;
+    --danger:#c0392b; --hp:#d44; --hpbg:#5a2320;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#16110b;
+    color:var(--cream);
+    font-family:'Nunito',system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100dvh; padding:12px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .pixel{font-family:'Press Start 2P',monospace;line-height:1.6;letter-spacing:.5px}
+
+  #game{
+    width:100%; max-width:560px;
+    background:linear-gradient(180deg,#241a10,#1a130b);
+    border:4px solid var(--wood2);
+    border-radius:10px;
+    box-shadow:0 0 0 4px #16110b,0 18px 40px rgba(0,0,0,.6);
+    overflow:hidden;
+    position:relative;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; background:var(--wood);
+    border-bottom:4px solid #16110b;
+    flex-wrap:wrap;
+  }
+  #hud .title{font-size:11px; color:var(--gold); margin-right:auto}
+  #hud .island{font-size:10px; color:var(--leaf); width:100%; order:5; opacity:.9}
+  .stat{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800}
+  .stat .ico{font-size:15px}
+  .hpbar{width:84px; height:12px; background:var(--hpbg); border:2px solid #16110b; border-radius:3px; overflow:hidden}
+  .hpbar > i{display:block; height:100%; background:linear-gradient(90deg,#e85d52,#d44); transition:width .3s}
+
+  /* ---------- World (3D) ---------- */
+  #worldWrap{position:relative; background:var(--sea); overflow:hidden;
+    height:56vh; max-height:440px; min-height:280px}
+  #world{position:absolute; inset:0}
+  #world canvas{display:block; width:100%; height:100%; touch-action:none}
+  /* mira / crosshair POV */
+  #crosshair{position:absolute; left:50%; top:50%; width:18px; height:18px;
+    transform:translate(-50%,-50%); pointer-events:none; z-index:4; opacity:.55}
+  #crosshair::before,#crosshair::after{content:""; position:absolute; background:#fff;
+    box-shadow:0 0 2px rgba(0,0,0,.7)}
+  #crosshair::before{left:50%; top:0; width:2px; height:100%; transform:translateX(-50%)}
+  #crosshair::after{top:50%; left:0; height:2px; width:100%; transform:translateY(-50%)}
+  #lookHint{position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+    background:rgba(8,5,2,.55); color:var(--cream); font-size:11px; font-weight:800;
+    padding:4px 10px; border-radius:8px; z-index:4; pointer-events:none;
+    transition:opacity .4s}
+
+  /* ---------- Controls ---------- */
+  #controls{display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; background:var(--wood); border-top:4px solid #16110b; gap:10px}
+  .dpad{display:grid; grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px); gap:4px}
+  .dpad button{grid-column:2; background:var(--wood2); color:var(--cream);
+    border:2px solid #16110b; border-radius:6px; font-size:16px; cursor:pointer; user-select:none}
+  .dpad .left{grid-column:1; grid-row:2}
+  .dpad .up{grid-row:1}
+  .dpad .down{grid-row:3}
+  .dpad .right{grid-column:3; grid-row:2}
+  .dpad button.held,.dpad button:active{background:var(--gold); color:#16110b}
+  .ctrl-right{display:flex; flex-direction:column; gap:8px}
+  .btn{font-family:'Nunito',sans-serif; font-weight:800; cursor:pointer;
+    border:2px solid #16110b; border-radius:7px; padding:9px 12px; font-size:13px;
+    background:var(--leaf); color:#143707}
+  .btn.gold{background:var(--gold); color:#3a2a05}
+  .btn.ghost{background:var(--wood2); color:var(--cream)}
+  .btn.danger{background:var(--danger); color:#fff}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .hint-key{font-size:9px; opacity:.7; text-align:center}
+
+  /* ---------- Modal ---------- */
+  #overlay{position:absolute; inset:0; background:rgba(8,5,2,.78);
+    display:none; align-items:center; justify-content:center; padding:16px; z-index:20}
+  #overlay.show{display:flex}
+  .panel{width:100%; max-width:420px; background:var(--wood);
+    border:4px solid var(--gold); border-radius:12px; padding:18px;
+    box-shadow:0 12px 30px rgba(0,0,0,.5); animation:pop .18s ease;
+    max-height:90%; overflow:auto}
+  @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+  .panel h2{font-size:13px; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px}
+  .speaker{display:flex; gap:10px; align-items:flex-start; margin-bottom:12px}
+  .speaker .face{font-size:34px}
+  .bubble{background:var(--wood2); border:2px solid #16110b; border-radius:8px;
+    padding:10px 12px; font-size:15px; line-height:1.5; flex:1}
+  .bubble b{color:var(--gold)}
+  .wordbig{font-family:'Press Start 2P',monospace; font-size:18px; color:var(--leaf);
+    text-align:center; margin:6px 0 14px}
+  .choices{display:grid; gap:8px}
+  .choice{font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; text-align:left;
+    background:var(--cream); color:#2a1c0e; border:2px solid #16110b; border-radius:8px;
+    padding:11px 13px; cursor:pointer}
+  .choice:hover{background:#fff}
+  .choice.correct{background:var(--leaf); color:#143707}
+  .choice.wrong{background:var(--danger); color:#fff}
+  .choice:disabled{cursor:default}
+  .feedback{margin-top:12px; font-size:14px; font-weight:800; min-height:20px}
+  .feedback.good{color:var(--leaf)}
+  .feedback.bad{color:#ff9a8f}
+  .panel-actions{display:flex; gap:8px; margin-top:14px; justify-content:flex-end; flex-wrap:wrap}
+
+  /* shop */
+  .shop-item{display:flex; align-items:center; gap:10px; background:var(--wood2);
+    border:2px solid #16110b; border-radius:8px; padding:10px; margin-bottom:8px}
+  .shop-item .si-ico{font-size:26px}
+  .shop-item .si-name{font-weight:800; font-size:14px}
+  .shop-item .si-desc{font-size:12px; opacity:.8}
+  .shop-item .si-buy{margin-left:auto; text-align:right}
+  .price{font-size:12px; font-weight:800; color:var(--gold); margin-bottom:4px}
+  .owned{font-size:11px; color:var(--leaf); font-weight:800}
+
+  /* word bank */
+  .wb-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:46vh; overflow:auto; margin-top:4px}
+  .wb-card{background:var(--cream); color:#2a1c0e; border:2px solid #16110b;
+    border-radius:8px; padding:8px 10px}
+  .wb-en{font-family:'Press Start 2P',monospace; font-size:11px; color:#6b3f12}
+  .wb-es{font-size:14px; font-weight:800; margin-top:3px}
+  .wb-mast{margin-top:5px; font-size:13px}
+  .wb-card.rusty{background:#e8d9b8; outline:2px dashed var(--danger)}
+  .wb-rusty-tag{font-size:10px; color:var(--danger); font-weight:800}
+  .empty{opacity:.7; font-size:14px; text-align:center; padding:18px}
+  .wb-sub{font-size:12px; opacity:.85; margin:8px 0 4px; color:var(--leaf); font-weight:800}
+
+  /* medals / achievements */
+  #hud .stat.clickable{cursor:pointer}
+  #objective{
+    display:flex; align-items:center; gap:8px;
+    padding:7px 12px; background:#2a1f12; border-bottom:4px solid #16110b;
+    font-size:12px; font-weight:800; color:var(--cream)}
+  #objective .ob-ico{font-size:16px}
+  #objective .ob-text b{color:var(--gold)}
+  #objective .ob-prog{margin-left:auto; font-size:11px; color:var(--leaf); white-space:nowrap}
+  .medal-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:52vh; overflow:auto; margin-top:6px}
+  .medal-card{display:flex; gap:9px; align-items:center; background:var(--cream); color:#2a1c0e;
+    border:2px solid #16110b; border-radius:8px; padding:8px 10px}
+  .medal-card.locked{filter:grayscale(1); opacity:.55}
+  .medal-card .m-ico{font-size:26px}
+  .medal-card .m-name{font-weight:800; font-size:13px}
+  .medal-card .m-desc{font-size:11px; opacity:.8}
+  .toast.medal{background:var(--gold); color:#3a2a05; border-color:#3a2a05}
+
+  /* boss: completar palabras (letras faltantes) */
+  .lett-word{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:8px 0 12px}
+  .lett-shown,.lett-slot{font-family:'Press Start 2P',monospace; font-size:15px;
+    width:28px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:6px}
+  .lett-shown{color:var(--leaf)}
+  .lett-slot{background:var(--wood2); border:2px dashed var(--gold); color:var(--cream)}
+  .lett-slot.filled{background:var(--cream); color:#2a1c0e; border-style:solid}
+  .lett-pool{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin:6px 0 2px}
+  .lett-btn{font-family:'Press Start 2P',monospace; font-size:13px; min-width:38px; padding:11px 8px;
+    background:var(--cream); color:#2a1c0e; border:2px solid #16110b; border-radius:7px; cursor:pointer}
+  .lett-btn:hover{background:#fff}
+  .lett-btn:active{transform:translateY(1px)}
+  .lett-btn:disabled{opacity:.4; cursor:default}
+
+  /* combat (enemies that multiply) */
+  .enemy-row{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:4px 0 10px}
+  .enemy{width:34px;height:34px;border:2px solid #16110b;border-radius:6px;
+    background:linear-gradient(#9b5fb0,#5a2a6e);
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .enemy.dead{background:#241a10; opacity:.4}
+
+  /* boss */
+  .bosswrap{text-align:center}
+  .boss-face{font-size:46px; margin:4px 0; filter:drop-shadow(0 0 8px rgba(192,57,43,.7))}
+  .boss-shake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .barlabel{font-size:10px; text-align:left; margin:8px 0 3px}
+  .bossbar{height:14px; background:#3a1410; border:2px solid #16110b; border-radius:4px; overflow:hidden}
+  .bossbar > i{display:block; height:100%; background:linear-gradient(90deg,#e74c3c,#c0392b); transition:width .35s}
+  .selfbar > i{background:linear-gradient(90deg,#e85d52,#d44)}
+
+  /* island travel */
+  .isl-item{display:flex; align-items:center; gap:10px; background:var(--wood2);
+    border:2px solid #16110b; border-radius:8px; padding:10px; margin-bottom:8px}
+  .isl-item .ii-ico{font-size:26px}
+  .isl-item .ii-name{font-weight:800; font-size:14px}
+  .isl-item .ii-desc{font-size:12px; opacity:.8}
+  .isl-item .ii-go{margin-left:auto}
+  .locked{opacity:.6}
+  .tag{font-size:10px; font-weight:800; color:var(--leaf)}
+  .tag.lock{color:var(--gold)}
+
+  .toast{position:absolute; left:50%; bottom:96px; transform:translateX(-50%);
+    background:var(--leaf); color:#143707; font-weight:800; font-size:13px;
+    padding:8px 14px; border-radius:8px; border:2px solid #16110b; z-index:30;
+    opacity:0; transition:opacity .25s, bottom .25s; pointer-events:none; text-align:center}
+  .toast.show{opacity:1; bottom:110px}
+  .toast.warn{background:var(--gold); color:#3a2a05}
+
+  /* perfil del jugador */
+  .prof-top{display:flex; gap:14px; align-items:center; margin-bottom:8px}
+  .prof-meta{flex:1; min-width:0}
+  .prof-name{font-family:'Press Start 2P',monospace; font-size:12px; color:var(--gold);
+    margin-bottom:8px; word-break:break-word; line-height:1.5}
+  .prof-stats{font-size:13px; font-weight:800; margin-bottom:4px}
+  .figure{position:relative; width:118px; height:168px; flex:none;
+    background:radial-gradient(circle at 50% 35%, #34271a, #1a130b);
+    border:3px solid var(--wood2); border-radius:12px; box-shadow:inset 0 0 0 2px #16110b}
+  .fig-body{position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
+    font-size:92px; filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
+  .fig-item{position:absolute; font-size:26px; line-height:1}
+  .fig-item.off{opacity:.16; filter:grayscale(1)}
+  .fig-item.on{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55))}
+  .fi-helmet{top:4px;  left:50%; transform:translateX(-50%)}
+  .fi-chest {top:60px; left:50%; transform:translateX(-50%)}
+  .fi-pants {top:100px;left:50%; transform:translateX(-50%)}
+  .fi-boots {bottom:4px;left:50%; transform:translateX(-50%)}
+  .fi-shield{top:64px; left:4px}
+  .fi-sword {top:64px; right:4px}
+  .name-input{width:100%; font-family:'Nunito',sans-serif; font-weight:800; font-size:16px;
+    padding:10px 12px; border:2px solid #16110b; border-radius:8px;
+    background:var(--cream); color:#2a1c0e; margin:8px 0}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important; transition:none!important}
+  }
+  @media (max-width:430px){
+    .btn{font-size:12px; padding:8px 10px}
+    #worldWrap{height:48vh}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="hud">
+    <span class="title pixel">APRENDER JUGANDO 3D</span>
+    <span class="stat" title="Vida"><span class="ico">❤️</span><span class="hpbar"><i id="hpFill" style="width:100%"></i></span></span>
+    <span class="stat" title="Gemas"><span class="ico">💎</span><span id="gemCount">0</span></span>
+    <span class="stat" title="Palabras aprendidas"><span class="ico">📖</span><span id="wordCount">0</span></span>
+    <span class="stat clickable" id="medalStat" title="Logros desbloqueados"><span class="ico">🏅</span><span id="medalCount">0/0</span></span>
+    <span class="island" id="islandName">Isla Niebla</span>
+  </div>
+
+  <div id="objective">
+    <span class="ob-ico" id="obIco">🎯</span>
+    <span class="ob-text" id="obText">Explora la isla</span>
+    <span class="ob-prog" id="obProg"></span>
+  </div>
+
+  <div id="worldWrap">
+    <div id="world"></div>
+    <div id="crosshair"></div>
+    <div id="lookHint">Arrastra para mirar · ▲▼ avanzar · ◀▶ girar</div>
+  </div>
+
+  <div id="controls">
+    <div class="dpad">
+      <button class="up" data-dir="up" aria-label="Avanzar">▲</button>
+      <button class="left" data-dir="left" aria-label="Girar izquierda">◀</button>
+      <button class="down" data-dir="down" aria-label="Retroceder">▼</button>
+      <button class="right" data-dir="right" aria-label="Girar derecha">▶</button>
+    </div>
+    <div class="ctrl-right">
+      <button class="btn gold" id="actionBtn" disabled>Acércate a alguien</button>
+      <button class="btn ghost" id="bankBtn">📖 Mis palabras</button>
+      <button class="btn ghost" id="profileBtn">👤 Perfil</button>
+      <button class="btn ghost" id="helpBtn">❓ Ayuda</button>
+      <div class="hint-key">Avanzar: ▲▼/W,S · Girar: ◀▶/A,D · Mirar: arrastra · Interactúa: E</div>
+    </div>
+  </div>
+
+  <div id="overlay"><div id="panel" class="panel"></div></div>
+  <div id="toast" class="toast"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ======================================================================
+   APRENDER JUGANDO — versión 3D POV (primera persona)
+
+   Mismas REGLAS que la versión 2D: exploras una isla, hablas con aldeanos
+   que dan PISTAS (no respuestas), lo aprendido es tu moneda y tu arma,
+   compras equipo, despejas enemigos y vences al jefe para abrir la
+   siguiente isla. La ÚNICA diferencia es la presentación: el mapa de
+   tiles ahora se recorre en 3D, en primera persona, con Three.js.
+
+   Toda la lógica de aprendizaje/combate/jefe/tienda/logros se conserva
+   intacta; sólo cambian el renderizado del mundo y el movimiento.
+   ====================================================================== */
+
+/* ----------------------------------------------------------------------
+   DATOS: ISLAS = módulos de aprendizaje (idénticos a la versión 2D)
+   ---------------------------------------------------------------------- */
+const ISLANDS = [
+  {
+    id:'niebla',
+    name:'Isla Niebla',
+    theme:'Inglés · saludos y básicos',
+    floor:'G',
+    vocab:[
+      {id:'hello',  en:'hello',  es:'hola',   hint:'La dices al encontrarte con alguien para saludar.'},
+      {id:'goodbye',en:'goodbye',es:'adiós',  hint:'La usas cuando te vas o te despides de alguien.'},
+      {id:'please', en:'please', es:'por favor',hint:'La palabra amable para pedir algo a otra persona.'},
+      {id:'thanks', en:'thanks', es:'gracias',hint:'La dices cuando alguien te ayuda o te da algo.'},
+      {id:'water',  en:'water',  es:'agua',   hint:'La bebes cuando tienes sed; llena el mar.'},
+      {id:'bread',  en:'bread',  es:'pan',    hint:'Comida hecha de harina que comes en el desayuno.'},
+      {id:'friend', en:'friend', es:'amigo',  hint:'Alguien en quien confías y con quien juegas.'},
+      {id:'house',  en:'house',  es:'casa',   hint:'El lugar donde vives y duermes.'}
+    ],
+    map:[
+      "WWWWWWWWWWWWW",
+      "WWSSSGGGSSWWW",
+      "WSSGGGGGGGSWW",
+      "WSGGGPGGGGGSW",
+      "WSGGGPGGGGGSW",
+      "WSGGPPPGGGGSW",
+      "WSGGPGGGGGGSW",
+      "WSGGGPGGGGGSW",
+      "WWSSGGGGGSSWW",
+      "WWWWSSSSWWWWW"
+    ],
+    spawn:{x:3,y:6},
+    objects:[
+      {id:'teacherA', kind:'teacher', face:'🧑‍🏫', x:3, y:3, name:'Maestra Mara',
+       words:['hello','goodbye','please','thanks']},
+      {id:'teacherB', kind:'teacher', face:'🧓', x:9, y:6, name:'Abuelo Tomi',
+       words:['water','bread','friend','house']},
+      {id:'reviewer', kind:'reviewer', face:'🧒', x:5, y:8, name:'Niña Lía'},
+      {id:'shop',     kind:'shop',     face:'🏪', x:2, y:5, name:'Tienda del Herrero'},
+      {id:'enemies',  kind:'enemies',  face:'👾', x:9, y:3, name:'Nido de slimes'},
+      {id:'boss',     kind:'boss',     face:'👹', x:6, y:1, name:'Guardián de la Niebla', face2:'🏳️',
+       greeting:'Para cruzar a la siguiente isla debes vencerme. ¡Solo lo lograrás si llevas una espada y has aprendido suficientes palabras!'}
+    ]
+  },
+  {
+    id:'bosque',
+    name:'Isla del Bosque',
+    theme:'Inglés · naturaleza',
+    floor:'G',
+    vocab:[
+      {id:'tree',   en:'tree',   es:'árbol',  hint:'Tiene tronco y hojas; crece en el bosque.'},
+      {id:'fire',   en:'fire',   es:'fuego',  hint:'Es caliente, da luz y quema la madera.'},
+      {id:'stone',  en:'stone',  es:'piedra', hint:'Material duro y gris del suelo y las montañas.'},
+      {id:'sun',    en:'sun',    es:'sol',    hint:'Brilla en el cielo de día y da calor.'},
+      {id:'rain',   en:'rain',   es:'lluvia', hint:'Agua que cae del cielo cuando hay nubes.'},
+      {id:'bird',   en:'bird',   es:'pájaro', hint:'Animal con alas y plumas que canta y vuela.'},
+      {id:'flower', en:'flower', es:'flor',   hint:'Parte colorida de la planta que huele bien.'},
+      {id:'river',  en:'river',  es:'río',    hint:'Corriente de agua que cruza el bosque.'}
+    ],
+    map:[
+      "WWWWWWWWWWWWW",
+      "WGGGGGGGGGGGW",
+      "WGGGGPPPGGGGW",
+      "WGGGGPGGGGGGW",
+      "WGGPPPGGGGGGW",
+      "WGGPGGGGGGGGW",
+      "WGGPPPGGGGGGW",
+      "WGGGGGPGGGGGW",
+      "WGGGGGGGGGGGW",
+      "WWWWWWWWWWWWW"
+    ],
+    spawn:{x:3,y:5},
+    objects:[
+      {id:'teacherC', kind:'teacher', face:'🧝', x:5, y:2, name:'Guardabosques Eli',
+       words:['tree','fire','stone','sun']},
+      {id:'teacherD', kind:'teacher', face:'🧑‍🌾', x:10, y:7, name:'Jardinera Bea',
+       words:['rain','bird','flower','river']},
+      {id:'reviewer', kind:'reviewer', face:'🦉', x:2, y:8, name:'Búho Memo'},
+      {id:'shop',     kind:'shop',     face:'⛺', x:2, y:2, name:'Campamento del Herrero'},
+      {id:'enemies',  kind:'enemies',  face:'🐗', x:9, y:3, name:'Manada de jabalíes'},
+      {id:'boss',     kind:'boss',     face:'🐲', x:6, y:1, name:'Dragón del Bosque', face2:'🏳️',
+       greeting:'¡Solo el conocimiento me hiere! Trae tu espada y muchas palabras si quieres pasar.'}
+    ]
+  }
+  /* >>> Para añadir un nuevo módulo, copia un objeto isla aquí. Ver README. <<< */
+];
+
+/* equipo de la tienda (común a todas las islas) */
+const SHOP=[
+  {key:'sword',  ico:'🗡️', name:'Espada',    desc:'Necesaria para enfrentar al jefe', price:8},
+  {key:'chest',  ico:'🦺', name:'Pechera',   desc:'Reduce mucho el daño (-6)', price:10},
+  {key:'helmet', ico:'🪖', name:'Casco',     desc:'Reduce el daño (-4)', price:6},
+  {key:'pants',  ico:'👖', name:'Pantalones',desc:'Reduce el daño (-3)', price:7},
+  {key:'shield', ico:'🛡️', name:'Escudo',    desc:'Bloquea bastante daño (-5)', price:9},
+  {key:'boots',  ico:'🥾', name:'Botas',     desc:'Reduce un poco el daño (-2)', price:5}
+];
+
+/* ----------------------------------------------------------------------
+   LOGROS / MEDALLAS
+   ---------------------------------------------------------------------- */
+const MEDALS=[
+  {id:'first',     ico:'🌱', name:'Primer paso',  desc:'Aprende tu primera palabra.',
+   cond:(s)=>learnedCount()>=1},
+  {id:'student',   ico:'📚', name:'Estudioso',    desc:'Aprende 5 palabras.',
+   cond:(s)=>learnedCount()>=5},
+  {id:'polyglot',  ico:'🎓', name:'Políglota',    desc:'Aprende 12 palabras.',
+   cond:(s)=>learnedCount()>=12},
+  {id:'mastery',   ico:'🥇', name:'Maestría',     desc:'Lleva una palabra a dominio ⭐⭐⭐.',
+   cond:(s)=>masteredCount()>=1},
+  {id:'streak5',   ico:'🔥', name:'En racha',     desc:'Acierta 5 respuestas seguidas.',
+   cond:(s,st)=>st.bestStreak>=5},
+  {id:'streak10',  ico:'⚡', name:'Imparable',    desc:'Acierta 10 respuestas seguidas.',
+   cond:(s,st)=>st.bestStreak>=10},
+  {id:'hunter',    ico:'⚔️', name:'Cazador',      desc:'Despeja tu primera zona de enemigos.',
+   cond:(s,st)=>st.zonesCleared>=1},
+  {id:'slayer',    ico:'👑', name:'Vencedor',     desc:'Derrota a tu primer jefe.',
+   cond:(s)=>Object.keys(s.bossDefeated).length>=1},
+  {id:'equipped',  ico:'🛡️', name:'Bien equipado',desc:'Compra las 6 piezas de equipo.',
+   cond:(s)=>['sword','chest','helmet','pants','shield','boots'].every(k=>s.gear[k])},
+  {id:'explorer',  ico:'🏝️', name:'Explorador',   desc:'Desbloquea una segunda isla.',
+   cond:(s)=>Object.keys(s.unlocked).length>=2}
+];
+
+/* ----------------------------------------------------------------------
+   ESTADO (con guardado en localStorage)
+   ---------------------------------------------------------------------- */
+const SAVE_KEY='aprender-jugando-save-v1';
+const defaultState = ()=>({
+  name:'Aventurero/a',
+  hp:100, maxHp:100, gems:0,
+  learned:{},
+  gear:{sword:false, chest:false, helmet:false, pants:false, shield:false, boots:false},
+  islandIndex:0,
+  px:ISLANDS[0].spawn.x, py:ISLANDS[0].spawn.y,
+  yaw:0,
+  bossDefeated:{},
+  cleared:{},
+  unlocked:{[ISLANDS[0].id]:true},
+  actionsSinceRust:0,
+  medals:{},
+  stats:{correctStreak:0, bestStreak:0, totalCorrect:0, zonesCleared:0}
+});
+let state = loadState() || defaultState();
+
+function saveState(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
+function loadState(){
+  try{
+    const r=localStorage.getItem(SAVE_KEY); if(!r) return null;
+    const saved=JSON.parse(r);
+    const base=defaultState();
+    return {...base, ...saved, gear:{...base.gear, ...(saved.gear||{})},
+      stats:{...base.stats, ...(saved.stats||{})}, medals:saved.medals||{}};
+  }catch(e){ return null; }
+}
+function resetGame(){ state = defaultState(); saveState(); buildWorld(); updateHUD(); refreshActionBtn(); closePanel(); toast('Progreso reiniciado'); }
+
+/* ----------------------------------------------------------------------
+   ACCESOS DERIVADOS DEL ESTADO
+   ---------------------------------------------------------------------- */
+const island = ()=>ISLANDS[state.islandIndex];
+const ALL_VOCAB = ISLANDS.flatMap(i=>i.vocab);
+const byId = id => ALL_VOCAB.find(w=>w.id===id);
+let MAP=[], ROWS=0, COLS=0, OBJECTS=[];
+
+function loadIsland(){
+  const isl=island();
+  MAP = isl.map.map(r=>r.split(''));
+  ROWS=MAP.length; COLS=MAP[0].length;
+  OBJECTS = isl.objects;
+  document.getElementById('islandName').textContent='🏝️ '+isl.name+' — '+isl.theme;
+}
+const walkable = (x,y)=> x>=0&&y>=0&&x<COLS&&y<ROWS && (MAP[y][x]==='G'||MAP[y][x]==='P'||MAP[y][x]==='S'||MAP[y][x]==='N');
+const objAt = (x,y)=>OBJECTS.find(o=>o.x===x&&o.y===y);
+const clearedKey = o => island().id+':'+o.id;
+const isCleared = o => !!state.cleared[clearedKey(o)];
+
+/* distractores */
+function meaningPool(){
+  const local=island().vocab.map(w=>w.es);
+  const extra=ALL_VOCAB.map(w=>w.es);
+  return [...new Set([...local, ...extra])];
+}
+function buildChoices(correctEs){
+  const others=meaningPool().filter(m=>m!==correctEs);
+  const picks=[];
+  while(picks.length<3 && others.length){
+    const c=others[Math.floor(Math.random()*others.length)];
+    if(!picks.includes(c)) picks.push(c);
+  }
+  const opts=[correctEs,...picks];
+  for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  return opts;
+}
+function learnedHere(){
+  return island().vocab.map(w=>w.id).filter(id=>state.learned[id]);
+}
+function anyLearnedId(){
+  const here=learnedHere();
+  const pool=here.length?here:Object.keys(state.learned);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+const learnedCount = ()=>Object.keys(state.learned).length;
+const masteredCount = ()=>Object.values(state.learned).filter(w=>w.mastery>=3).length;
+function islandProgress(){
+  const ids=island().vocab.map(w=>w.id);
+  return {done:ids.filter(id=>state.learned[id]).length, total:ids.length};
+}
+
+/* ======================================================================
+   MUNDO 3D (Three.js) — primera persona
+   ====================================================================== */
+const worldEl=document.getElementById('world');
+let renderer, scene, camera, clock;
+let terrainGroup, objGroup, ringMesh, waterMeshes=[];
+const objMeshes={};          // objId -> THREE.Sprite
+const EYE=1.45;              // altura de los ojos sobre el suelo
+const MOVE_SPEED=2.6;        // unidades/seg
+const TURN_SPEED=1.9;        // rad/seg
+let yaw=0, pitch=0;          // orientación de la cámara
+let pcx=0, pcz=0;            // posición continua del jugador (x, z)
+let nearestId=null;          // objeto interactuable más cercano (cache)
+
+const input={f:false,b:false,l:false,r:false};
+
+/* paleta a partir de las variables CSS */
+function cssColor(name){
+  const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return new THREE.Color(v||'#888');
+}
+const PAL={};
+function loadPalette(){
+  PAL.G=cssColor('--grass'); PAL.G2=cssColor('--grass2');
+  PAL.S=cssColor('--sand');  PAL.P=cssColor('--path');
+  PAL.N=cssColor('--snow');  PAL.W=cssColor('--sea'); PAL.W2=cssColor('--sea2');
+  PAL.rock=cssColor('--rock');
+}
+
+/* textura de un emoji sobre fondo transparente (para sprites POV) */
+const _texCache={};
+function emojiTexture(ch){
+  if(_texCache[ch]) return _texCache[ch];
+  const s=128, c=document.createElement('canvas'); c.width=c.height=s;
+  const g=c.getContext('2d');
+  g.textAlign='center'; g.textBaseline='middle';
+  g.font='96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  g.fillText(ch, s/2, s/2+6);
+  const t=new THREE.CanvasTexture(c);
+  t.minFilter=THREE.LinearFilter;
+  _texCache[ch]=t; return t;
+}
+function setSpriteFace(sprite, ch){
+  sprite.material.map=emojiTexture(ch);
+  sprite.material.needsUpdate=true;
+}
+
+function setupThree(){
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  worldEl.appendChild(renderer.domElement);
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(72,1,0.1,200);
+  clock=new THREE.Clock();
+
+  const hemi=new THREE.HemisphereLight(0xffffff,0x404048,1.0); scene.add(hemi);
+  const sun=new THREE.DirectionalLight(0xffffff,0.7);
+  sun.position.set(6,12,4); scene.add(sun);
+
+  terrainGroup=new THREE.Group(); scene.add(terrainGroup);
+  objGroup=new THREE.Group();     scene.add(objGroup);
+
+  // anillo dorado bajo el objeto interactuable cercano
+  const ringGeo=new THREE.TorusGeometry(0.45,0.07,10,28);
+  const ringMat=new THREE.MeshBasicMaterial({color:cssColor('--gold')});
+  ringMesh=new THREE.Mesh(ringGeo,ringMat);
+  ringMesh.rotation.x=-Math.PI/2; ringMesh.visible=false;
+  scene.add(ringMesh);
+
+  initLookControls();
+  onResize();
+  window.addEventListener('resize',onResize);
+  animate();
+}
+
+function clearGroup(g){ while(g.children.length) g.remove(g.children[0]); }
+
+/* construye (o reconstruye) la isla actual en 3D */
+function buildWorld(){
+  loadIsland();
+  if(!renderer){ loadPalette(); setupThree(); }
+
+  // ambiente segun isla: la "Isla Niebla" tiene niebla densa :)
+  const isFoggy = island().id==='niebla';
+  scene.background = (isFoggy? cssColor('--sea2') : cssColor('--sea')).clone();
+  scene.fog = new THREE.Fog(scene.background.getHex(), isFoggy?5:9, isFoggy?16:26);
+
+  clearGroup(terrainGroup); clearGroup(objGroup);
+  waterMeshes.length=0; for(const k in objMeshes) delete objMeshes[k];
+
+  // mar de fondo (gran plano) bajo todo el mapa
+  const seaGeo=new THREE.PlaneGeometry(120,120);
+  const seaMat=new THREE.MeshBasicMaterial({color:PAL.W2});
+  const seaPlane=new THREE.Mesh(seaGeo,seaMat);
+  seaPlane.rotation.x=-Math.PI/2; seaPlane.position.set(COLS/2,-0.55,ROWS/2);
+  terrainGroup.add(seaPlane);
+
+  const cube=new THREE.BoxGeometry(1,1,1);
+  const mat={
+    G:new THREE.MeshLambertMaterial({color:PAL.G}),
+    S:new THREE.MeshLambertMaterial({color:PAL.S}),
+    P:new THREE.MeshLambertMaterial({color:PAL.P}),
+    N:new THREE.MeshLambertMaterial({color:PAL.N}),
+    W:new THREE.MeshLambertMaterial({color:PAL.W,transparent:true,opacity:.85})
+  };
+
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const t=MAP[y][x];
+    if(t==='W'){
+      // bloque de agua, más bajo, ligeramente animado
+      const m=new THREE.Mesh(cube,mat.W);
+      m.scale.set(1,0.7,1);
+      m.position.set(x,-0.35,y);
+      m.userData.base=-0.35; m.userData.ph=(x+y)*0.6;
+      terrainGroup.add(m); waterMeshes.push(m);
+    }else{
+      // bloque de tierra: altura variable, con su cara superior fijada en y=0
+      // (centro en -h/2 para que el jugador camine siempre sobre y≈0)
+      const h = t==='N'?1.15 : t==='S'?0.95 : 1;
+      const m=new THREE.Mesh(cube,mat[t]||mat.G);
+      m.scale.set(1,h,1);
+      m.position.set(x,-h/2,y);
+      terrainGroup.add(m);
+      // decoración ocasional sobre césped
+      if(t==='G' && !objAt(x,y) && ((x*7+y*3)%5===0)) addDecor(x,y);
+    }
+  }
+
+  buildObjects();
+
+  // posición/orientación inicial del jugador
+  pcx = (typeof state.px==='number')? state.px : island().spawn.x;
+  pcz = (typeof state.py==='number')? state.py : island().spawn.y;
+  if(!walkable(Math.round(pcx),Math.round(pcz))){ pcx=island().spawn.x; pcz=island().spawn.y; }
+  yaw = state.yaw||0; pitch=0;
+  nearestId=null;
+  updateCamera();
+}
+
+/* arbolito/arbusto decorativo simple */
+function addDecor(x,y){
+  const forest=island().id==='bosque';
+  if(forest){
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.5,6),
+      new THREE.MeshLambertMaterial({color:cssColor('--wood2')}));
+    trunk.position.set(x,0.25,y);
+    const leaves=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.7,7),
+      new THREE.MeshLambertMaterial({color:cssColor('--grass2')}));
+    leaves.position.set(x,0.75,y);
+    terrainGroup.add(trunk); terrainGroup.add(leaves);
+  }else{
+    const bush=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,6),
+      new THREE.MeshLambertMaterial({color:cssColor('--grass2')}));
+    bush.position.set(x,0.2,y); terrainGroup.add(bush);
+  }
+}
+
+function buildObjects(){
+  OBJECTS.forEach(o=>{
+    const done = (o.kind==='boss'&&state.bossDefeated[island().id]) || (o.kind==='enemies'&&isCleared(o));
+    const face = (o.kind==='boss'&&state.bossDefeated[island().id]&&o.face2)?o.face2 : o.face;
+    const spMat=new THREE.SpriteMaterial({map:emojiTexture(face),transparent:true,
+      depthWrite:false});
+    const sp=new THREE.Sprite(spMat);
+    const big = (o.kind==='boss');
+    sp.scale.set(big?1.7:1.3, big?1.7:1.3, 1);
+    sp.position.set(o.x, big?1.1:0.95, o.y);
+    sp.userData={objId:o.id, base:sp.position.y};
+    if(done){ sp.material.color.set(0x9a9a9a); sp.material.opacity=.6; }
+    objGroup.add(sp); objMeshes[o.id]=sp;
+
+    // pedestal bajo cada NPC para que "pise" el suelo
+    const ped=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.4,0.18,12),
+      new THREE.MeshLambertMaterial({color:done?PAL.rock:cssColor('--wood2')}));
+    ped.position.set(o.x,0.09,o.y);
+    objGroup.add(ped);
+  });
+}
+
+function setObjCleared(o, face){
+  const sp=objMeshes[o.id]; if(!sp) return;
+  if(face) setSpriteFace(sp,face);
+  sp.material.color.set(0x9a9a9a); sp.material.opacity=.6;
+}
+
+/* ---------- cámara / mirada ---------- */
+function dirVector(){
+  return {
+    x:Math.cos(pitch)*Math.sin(yaw),
+    y:Math.sin(pitch),
+    z:-Math.cos(pitch)*Math.cos(yaw)
+  };
+}
+function updateCamera(){
+  camera.position.set(pcx,EYE,pcz);
+  const d=dirVector();
+  camera.lookAt(pcx+d.x, EYE+d.y, pcz+d.z);
+}
+function initLookControls(){
+  const el=renderer.domElement;
+  let dragging=false, lx=0, ly=0;
+  const start=(x,y)=>{dragging=true; lx=x; ly=y; fadeLookHint();};
+  const moveLook=(x,y)=>{
+    if(!dragging) return;
+    const dx=x-lx, dy=y-ly; lx=x; ly=y;
+    yaw += dx*0.005;
+    pitch = Math.max(-0.6, Math.min(0.55, pitch - dy*0.005));
+  };
+  const end=()=>{dragging=false; state.yaw=yaw; saveState();};
+  el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId); start(e.clientX,e.clientY);});
+  el.addEventListener('pointermove',e=>moveLook(e.clientX,e.clientY));
+  el.addEventListener('pointerup',end);
+  el.addEventListener('pointercancel',end);
+}
+let _hintFaded=false;
+function fadeLookHint(){
+  if(_hintFaded) return; _hintFaded=true;
+  const h=document.getElementById('lookHint'); if(h) h.style.opacity='0';
+}
+
+function onResize(){
+  const w=worldEl.clientWidth, h=worldEl.clientHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+
+/* ---------- colisión sobre la rejilla ---------- */
+const solidCell=(cx,cy)=> !walkable(cx,cy) || !!objAt(cx,cy);
+function canStand(x,z){
+  const cx=Math.round(x), cz=Math.round(z);
+  return !solidCell(cx,cz);
+}
+
+/* ---------- bucle principal ---------- */
+let _saveAcc=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  const overlayShown=overlay.classList.contains('show');
+
+  if(!overlayShown){
+    // giro
+    if(input.l) yaw -= TURN_SPEED*dt;
+    if(input.r) yaw += TURN_SPEED*dt;
+    // avance/retroceso en el plano (sólo componente horizontal del yaw)
+    let mv=0;
+    if(input.f) mv+=1;
+    if(input.b) mv-=1;
+    if(mv!==0){
+      const fx=Math.sin(yaw), fz=-Math.cos(yaw);
+      const nx=pcx + fx*MOVE_SPEED*dt*mv;
+      const nz=pcz + fz*MOVE_SPEED*dt*mv;
+      if(canStand(nx,pcz)) pcx=nx;
+      if(canStand(pcx,nz)) pcz=nz;
+    }
+    updateCamera();
+
+    // guardado y estado de rejilla
+    state.px=pcx; state.py=pcz; state.yaw=yaw;
+    _saveAcc+=dt; if(_saveAcc>0.8){ _saveAcc=0; saveState(); }
+
+    // objeto interactuable más cercano
+    updateNearest();
+  }
+
+  // animaciones suaves: agua y flotación de sprites
+  const t=clock.elapsedTime;
+  for(const m of waterMeshes) m.position.y = m.userData.base + Math.sin(t*1.5+m.userData.ph)*0.04;
+  for(const id in objMeshes){ const sp=objMeshes[id]; sp.position.y = sp.userData.base + Math.sin(t*1.6+sp.position.x)*0.06; }
+
+  // anillo pulsante bajo el objetivo cercano
+  if(ringMesh.visible){
+    const s=1+Math.sin(t*4)*0.12;
+    ringMesh.scale.set(s,s,1);
+  }
+
+  renderer.render(scene,camera);
+}
+
+/* ----------------------------------------------------------------------
+   INTERACCIÓN POR CERCANÍA (equivalente 3D de "isAdjacent")
+   ---------------------------------------------------------------------- */
+function distToObj(o){ return Math.hypot(o.x-pcx, o.y-pcz); }
+function nearestInteractable(){
+  let best=null, bd=1.7;
+  OBJECTS.forEach(o=>{ const d=distToObj(o); if(d<bd){ bd=d; best=o; } });
+  return best;
+}
+function isAdjacent(o){ return distToObj(o)<1.7; }
+
+function updateNearest(){
+  const o=nearestInteractable();
+  const id=o?o.id:null;
+  if(id!==nearestId){
+    nearestId=id;
+    refreshActionBtn();
+    if(o){ ringMesh.visible=true; ringMesh.position.set(o.x,0.12,o.y); }
+    else ringMesh.visible=false;
+  }
+}
+function refreshActionBtn(){
+  const btn=document.getElementById('actionBtn');
+  const o=nearestInteractable();
+  if(o){ btn.disabled=false; btn.textContent=labelFor(o);
+    ringMesh.visible=true; ringMesh.position.set(o.x,0.12,o.y); }
+  else{ btn.disabled=true; btn.textContent='Acércate a alguien'; ringMesh.visible=false; }
+}
+function labelFor(o){
+  if(o.kind==='teacher') return '💬 Hablar con '+o.name.split(' ').slice(1).join(' ');
+  if(o.kind==='reviewer') return '🔁 Repasar palabras';
+  if(o.kind==='shop') return '🏪 Entrar a la tienda';
+  if(o.kind==='enemies') return isCleared(o)?'✅ Zona despejada':'⚔️ Combatir enemigos';
+  if(o.kind==='boss') return state.bossDefeated[island().id]?'🚢 Viajar de isla':'⚔️ Enfrentar al jefe';
+}
+
+/* ----------------------------------------------------------------------
+   HUD / TOAST / MODAL
+   ---------------------------------------------------------------------- */
+function updateHUD(){
+  document.getElementById('hpFill').style.width=Math.max(0,state.hp/state.maxHp*100)+'%';
+  document.getElementById('gemCount').textContent=state.gems;
+  document.getElementById('wordCount').textContent=Object.keys(state.learned).length;
+  const got=MEDALS.filter(m=>state.medals[m.id]).length;
+  document.getElementById('medalCount').textContent=got+'/'+MEDALS.length;
+  updateObjective();
+}
+function toast(msg,warn){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(warn?' warn':'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast'+(warn?' warn':''),2000);
+}
+const overlay=document.getElementById('overlay');
+const panel=document.getElementById('panel');
+function openPanel(html){ panel.innerHTML=html; overlay.classList.add('show'); }
+function closePanel(){ overlay.classList.remove('show'); refreshActionBtn(); }
+function addAction(html){
+  let pa=panel.querySelector('.panel-actions');
+  if(!pa){pa=document.createElement('div'); pa.className='panel-actions'; panel.appendChild(pa);}
+  pa.innerHTML=html;
+}
+
+/* ----------------------------------------------------------------------
+   LOGROS
+   ---------------------------------------------------------------------- */
+function recordAnswer(correct){
+  if(correct){
+    state.stats.totalCorrect++;
+    state.stats.correctStreak++;
+    if(state.stats.correctStreak>state.stats.bestStreak)
+      state.stats.bestStreak=state.stats.correctStreak;
+  }else{
+    state.stats.correctStreak=0;
+  }
+  checkMedals();
+}
+let _medalQueue=[];
+function checkMedals(){
+  MEDALS.forEach(m=>{
+    if(!state.medals[m.id] && m.cond(state, state.stats)) awardMedal(m);
+  });
+  saveState(); updateHUD();
+}
+function awardMedal(m){
+  state.medals[m.id]=true;
+  _medalQueue.push(m);
+  if(_medalQueue.length===1) flushMedalToast();
+}
+function flushMedalToast(){
+  const m=_medalQueue[0];
+  if(!m) return;
+  const t=document.getElementById('toast');
+  t.textContent='🏅 ¡Logro: '+m.name+'!';
+  t.className='toast show medal';
+  clearTimeout(t._t); t._t=setTimeout(()=>{
+    t.className='toast medal';
+    _medalQueue.shift();
+    if(_medalQueue.length) setTimeout(flushMedalToast,300);
+  },2200);
+}
+function openMedals(){
+  const got=MEDALS.filter(m=>state.medals[m.id]).length;
+  const cards=MEDALS.map(m=>{
+    const on=state.medals[m.id];
+    return `<div class="medal-card ${on?'':'locked'}">
+      <span class="m-ico">${m.ico}</span>
+      <div><div class="m-name">${m.name}</div><div class="m-desc">${m.desc}</div></div>
+    </div>`;}).join('');
+  openPanel(`<h2>🏅 Logros (${got}/${MEDALS.length})</h2>
+    <p style="font-size:13px;opacity:.85;margin-bottom:4px">Desbloquea medallas aprendiendo y superando retos. ¡A por todas!</p>
+    <div class="medal-grid">${cards}</div>
+    <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Cerrar</button></div>`);
+}
+
+/* ----------------------------------------------------------------------
+   OBJETIVO
+   ---------------------------------------------------------------------- */
+function nextObjective(){
+  if(state.bossDefeated[island().id])
+    return {ico:'🚢', text:'¡Isla liberada! Acércate al muelle y <b>viaja</b> a la siguiente.'};
+  const learned=learnedCount();
+  if(learned<3)
+    return {ico:'💬', text:`Habla con los aldeanos y aprende <b>${3-learned}</b> palabra(s) más.`};
+  if(!state.gear.sword)
+    return {ico:'🏪', text:'Ve a la <b>tienda</b> 🏪 y consigue una <b>espada</b>.'};
+  return {ico:'👹', text:'¡Listo para el <b>jefe</b>! Acércate a él y vence con lo aprendido.'};
+}
+function updateObjective(){
+  const o=nextObjective(); const p=islandProgress();
+  document.getElementById('obIco').textContent=o.ico;
+  document.getElementById('obText').innerHTML=o.text;
+  document.getElementById('obProg').textContent=`📖 ${p.done}/${p.total} de esta isla`;
+}
+
+/* ----------------------------------------------------------------------
+   INTERACCIÓN
+   ---------------------------------------------------------------------- */
+function interact(o){
+  if(o.kind==='teacher') talkTeacher(o);
+  else if(o.kind==='reviewer') talkReviewer(o);
+  else if(o.kind==='shop') openShop(o);
+  else if(o.kind==='enemies') startCombat(o);
+  else if(o.kind==='boss') state.bossDefeated[island().id]?openTravel():startBoss(o);
+}
+document.getElementById('actionBtn').addEventListener('click',()=>{const o=nearestInteractable(); if(o) interact(o);});
+
+/* ---------- Aldeano que enseña (pista, no respuesta) ---------- */
+function talkTeacher(o){
+  const next=o.words.find(id=>!state.learned[id]);
+  if(!next){
+    openPanel(`<h2>${o.face} ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">¡Ya aprendiste todo lo que te puedo enseñar! Ve a la tienda, despeja una zona de enemigos o repasa con el guía de repaso.</div></div>
+      <div class="panel-actions"><button class="btn" onclick="closePanel()">Listo</button></div>`);
+    return;
+  }
+  const w=byId(next);
+  openPanel(`<h2>${o.face} ${o.name}</h2>
+    <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">Hoy aprenderás la palabra <b>“${w.en}”</b>.<br><br>
+      Mi pista: <b>${w.hint}</b><br><br>No te doy la respuesta: dedúcela tú. ¿Ya sabes qué significa?</div></div>
+    <div class="panel-actions">
+      <button class="btn ghost" onclick="closePanel()">Después</button>
+      <button class="btn" onclick="learnChallenge('${w.id}')">Creo que ya lo sé</button>
+    </div>`);
+}
+function learnChallenge(id){
+  const w=byId(id); const opts=buildChoices(w.es);
+  openPanel(`<h2>💡 ¿Qué significa…?</h2>
+    <div class="wordbig">${w.en}</div>
+    <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
+    <div class="feedback" id="fb"></div>`);
+  panel.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>resolveLearn(btn,id,w.es)));
+}
+function resolveLearn(btn,id,correct){
+  const right=btn.dataset.v===correct;
+  panel.querySelectorAll('.choice').forEach(b=>{b.disabled=true;
+    if(b.dataset.v===correct)b.classList.add('correct'); else if(b===btn)b.classList.add('wrong');});
+  const fb=document.getElementById('fb');
+  if(right){
+    state.learned[id]={mastery:1, rusty:false};
+    state.gems+=2; recordAnswer(true); updateHUD(); maybeRust(); saveState();
+    fb.className='feedback good'; fb.textContent=`¡Correcto! Aprendiste “${byId(id).en}”. +2 💎`;
+    addAction(`<button class="btn" onclick="closePanel()">Seguir</button>`);
+  }else{
+    recordAnswer(false);
+    fb.className='feedback bad'; fb.textContent='Casi. Vuelve a leer la pista del aldeano e inténtalo.';
+    addAction(`<button class="btn" onclick="learnChallenge('${id}')">Intentar de nuevo</button>`);
+  }
+}
+
+/* ---------- Repaso espaciado ---------- */
+function maybeRust(){
+  state.actionsSinceRust++;
+  const fresh=Object.keys(state.learned).filter(id=>!state.learned[id].rusty);
+  if(state.actionsSinceRust>=3 && fresh.length>=2){
+    const pick=fresh[Math.floor(Math.random()*fresh.length)];
+    state.learned[pick].rusty=true; state.actionsSinceRust=0;
+    toast('🔁 Una palabra se oxidó: visita al guía de repaso', true);
+  }
+}
+function talkReviewer(o){
+  const rusty=Object.keys(state.learned).filter(id=>state.learned[id].rusty);
+  if(rusty.length===0){
+    openPanel(`<h2>🔁 ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">¡Tienes todas tus palabras frescas! No hay nada que repasar ahora. 🌿</div></div>
+      <div class="panel-actions"><button class="btn" onclick="closePanel()">Genial</button></div>`);
+    return;
+  }
+  const id=rusty[0], w=byId(id), opts=buildChoices(w.es);
+  openPanel(`<h2>🔁 ${o.name}</h2>
+    <div class="speaker"><div class="face">${o.face}</div>
+    <div class="bubble">Esta palabra se te está olvidando. ¡Refréscala! (quedan ${rusty.length} por repasar)</div></div>
+    <div class="wordbig">${w.en}</div>
+    <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
+    <div class="feedback" id="fb"></div>`);
+  panel.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>{
+    const right=btn.dataset.v===w.es;
+    panel.querySelectorAll('.choice').forEach(b=>{b.disabled=true;
+      if(b.dataset.v===w.es)b.classList.add('correct'); else if(b===btn)b.classList.add('wrong');});
+    const fb=document.getElementById('fb');
+    if(right){
+      state.learned[id].rusty=false;
+      state.learned[id].mastery=Math.min(3,state.learned[id].mastery+1);
+      state.gems+=1; recordAnswer(true); updateHUD(); saveState();
+      fb.className='feedback good'; fb.textContent='¡Refrescada! Tu dominio subió. +1 💎';
+      addAction(`<button class="btn" onclick="talkReviewer(OBJECTS.find(o=>o.id==='${o.id}'))">Repasar otra</button>
+                 <button class="btn ghost" onclick="closePanel()">Salir</button>`);
+    }else{
+      recordAnswer(false);
+      fb.className='feedback bad'; fb.textContent='No pasa nada, repásala otra vez.';
+      addAction(`<button class="btn" onclick="talkReviewer(OBJECTS.find(o=>o.id==='${o.id}'))">Reintentar</button>`);
+    }
+  }));
+}
+
+/* ---------- Tienda ---------- */
+function openShop(o){
+  const items=SHOP.map(it=>{
+    const owned=state.gear[it.key];
+    return `<div class="shop-item">
+      <span class="si-ico">${it.ico}</span>
+      <div><div class="si-name">${it.name}</div><div class="si-desc">${it.desc}</div></div>
+      <div class="si-buy">${owned?'<span class="owned">✔ Comprado</span>':
+        `<div class="price">💎 ${it.price}</div>
+         <button class="btn gold" ${state.gems<it.price?'disabled':''} onclick="buyFlow('${it.key}')">Comprar</button>`}</div>
+    </div>`;}).join('');
+  openPanel(`<h2>🏪 ${o.name}</h2>
+    <div class="speaker"><div class="face">🧔</div>
+    <div class="bubble">Tienes <b>${state.gems} 💎</b>. Elige tu equipo. Aquí no se paga solo con gemas: <b>demuéstrame que aprendiste</b> una palabra.</div></div>
+    ${items}
+    <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Salir</button></div>`);
+}
+function buyFlow(key){
+  const item=SHOP.find(s=>s.key===key);
+  if(Object.keys(state.learned).length===0){ toast('Aprende una palabra primero',true); return; }
+  const id=anyLearnedId();
+  const w=byId(id), opts=buildChoices(w.es);
+  openPanel(`<h2>🤝 Demuestra para pagar</h2>
+    <div class="speaker"><div class="face">🧔</div>
+    <div class="bubble">Para llevarte el <b>${item.name}</b>, dime: ¿qué significa esta palabra?</div></div>
+    <div class="wordbig">${w.en}</div>
+    <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
+    <div class="feedback" id="fb"></div>`);
+  panel.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>{
+    const right=btn.dataset.v===w.es;
+    panel.querySelectorAll('.choice').forEach(b=>{b.disabled=true;
+      if(b.dataset.v===w.es)b.classList.add('correct'); else if(b===btn)b.classList.add('wrong');});
+    const fb=document.getElementById('fb');
+    if(right){
+      state.gems-=item.price; state.gear[key]=true; recordAnswer(true); updateHUD(); saveState();
+      fb.className='feedback good'; fb.textContent=`¡Trato hecho! Equipaste el ${item.name}.`;
+      addAction(`<button class="btn" onclick="openShop(OBJECTS.find(o=>o.id==='shop'))">Seguir comprando</button>`);
+    }else{
+      recordAnswer(false);
+      fb.className='feedback bad'; fb.textContent=`La respuesta era “${w.es}”. Inténtalo de nuevo, sin prisa.`;
+      addAction(`<button class="btn" onclick="buyFlow('${key}')">Reintentar</button>`);
+    }
+  }));
+}
+
+/* ---------- Combate ---------- */
+let combat=null;
+function startCombat(o){
+  if(isCleared(o)){
+    openPanel(`<h2>✅ ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">Ya despejaste esta zona. ¡Buen trabajo!</div></div>
+      <div class="panel-actions"><button class="btn" onclick="closePanel()">Cerrar</button></div>`);
+    return;
+  }
+  if(Object.keys(state.learned).length<2){
+    openPanel(`<h2>⚔️ ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">Aprende al menos <b>2 palabras</b> con los aldeanos para tener con qué luchar.</div></div>
+      <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
+    return;
+  }
+  const level=state.islandIndex+1;
+  combat={obj:o, total:level+1, killed:0, face:o.face};
+  combatTurn();
+}
+function combatTurn(){
+  if(combat.killed>=combat.total){ combatWin(); return; }
+  const id=anyLearnedId(), w=byId(id), opts=buildChoices(w.es);
+  let row='';
+  for(let i=0;i<combat.total;i++) row+=`<div class="enemy ${i<combat.killed?'dead':''}">${i<combat.killed?'💀':combat.face}</div>`;
+  openPanel(`<h2>⚔️ ${combat.obj.name}</h2>
+    <p style="font-size:12px;opacity:.85;text-align:center;margin-bottom:6px">Quedan ${combat.total-combat.killed}. Cada respuesta correcta derrota a uno.</p>
+    <div class="enemy-row">${row}</div>
+    <div class="bossbar selfbar" style="margin-bottom:10px"><i style="width:${state.hp/state.maxHp*100}%"></i></div>
+    <div class="speaker"><div class="face">${combat.face}</div>
+    <div class="bubble">¡Atácalos! ¿Qué significa esta palabra?</div></div>
+    <div class="wordbig">${w.en}</div>
+    <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
+    <div class="feedback" id="fb"></div>`);
+  panel.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>resolveCombat(btn,id,w.es)));
+}
+function damageTaken(){
+  let d=16;
+  if(state.gear.chest)  d-=6;
+  if(state.gear.shield) d-=5;
+  if(state.gear.helmet) d-=4;
+  if(state.gear.pants)  d-=3;
+  if(state.gear.boots)  d-=2;
+  return Math.max(2,d);
+}
+function resolveCombat(btn,id,correct){
+  const right=btn.dataset.v===correct;
+  panel.querySelectorAll('.choice').forEach(b=>{b.disabled=true;
+    if(b.dataset.v===correct)b.classList.add('correct'); else if(b===btn)b.classList.add('wrong');});
+  const fb=document.getElementById('fb');
+  if(right){
+    combat.killed++; state.learned[id].mastery=Math.min(3,state.learned[id].mastery+1);
+    recordAnswer(true);
+    fb.className='feedback good'; fb.textContent='¡Golpe certero! Enemigo derrotado.';
+  }else{
+    const dmg=damageTaken(); state.hp=Math.max(0,state.hp-dmg);
+    state.learned[id].mastery=Math.max(1,state.learned[id].mastery-1); recordAnswer(false); updateHUD();
+    fb.className='feedback bad'; fb.textContent=`Fallaste — te golpean (-${dmg} ❤️). Era “${correct}”.`;
+  }
+  saveState();
+  setTimeout(()=>{
+    if(state.hp<=0){ defeated('Los enemigos te superaron.'); return; }
+    if(combat.killed>=combat.total) combatWin();
+    else addAction(`<button class="btn" onclick="combatTurn()">Siguiente</button>`);
+  },650);
+}
+function combatWin(){
+  const reward=6+state.islandIndex*3;
+  state.gems+=reward; state.cleared[clearedKey(combat.obj)]=true;
+  state.stats.zonesCleared++; checkMedals(); updateHUD(); saveState();
+  setObjCleared(combat.obj);
+  openPanel(`<h2>🎉 ¡Zona despejada!</h2>
+    <div class="speaker"><div class="face">${combat.face}</div>
+    <div class="bubble">Derrotaste a ${combat.total} enemigos usando lo que aprendiste. Recompensa: <b>+${reward} 💎</b>.</div></div>
+    <div class="panel-actions"><button class="btn" onclick="closePanel()">¡Genial!</button></div>`);
+}
+
+/* ---------- Jefe: completar 5 palabras con letras faltantes ---------- */
+let bossFight=null;
+const ALPHA='abcdefghijklmnopqrstuvwxyz';
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function pickBossWords(){
+  let pool=island().vocab.filter(w=>state.learned[w.id]);
+  if(pool.length<5){
+    const extra=ALL_VOCAB.filter(w=>state.learned[w.id] && !pool.includes(w));
+    pool=pool.concat(extra);
+  }
+  pool=pool.slice().sort((a,b)=>a.en.length-b.en.length);
+  const picks=[];
+  for(let i=0;i<5;i++) picks.push(pool[i<pool.length?i:pool.length-1]);
+  return picks;
+}
+function makeLetterPool(missing){
+  const set=new Set(missing), decoys=[];
+  while(decoys.length<4){ const c=ALPHA[Math.floor(Math.random()*26)];
+    if(!set.has(c)&&!decoys.includes(c)) decoys.push(c); }
+  return shuffle([...new Set(missing), ...decoys]);
+}
+function startBoss(o){
+  if(!state.gear.sword){
+    openPanel(`<h2>${o.face} ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">${o.greeting}<br><br><b>Te falta una espada.</b> Consíguela en la tienda con tus gemas.</div></div>
+      <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
+    return;
+  }
+  if(Object.keys(state.learned).length<3){
+    openPanel(`<h2>${o.face} ${o.name}</h2>
+      <div class="speaker"><div class="face">${o.face}</div>
+      <div class="bubble">Aprende al menos <b>3 palabras</b> con los aldeanos antes de enfrentarme.</div></div>
+      <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
+    return;
+  }
+  state.hp=state.maxHp; updateHUD();
+  bossFight={o, idx:0, words:pickBossWords()};
+  bossWord();
+}
+function bossWord(){
+  const bf=bossFight; if(!bf) return;
+  if(bf.idx>=5){ winBoss(bf.o); return; }
+  const word=bf.words[bf.idx].en.toLowerCase();
+  const hide=Math.min(bf.idx+1, word.length);
+  const idxs=shuffle([...Array(word.length).keys()]).slice(0,hide).sort((a,b)=>a-b);
+  bf.word=word; bf.es=bf.words[bf.idx].es; bf.positions=idxs;
+  bf.slots=new Array(hide).fill(null);
+  bf.pool=makeLetterPool(idxs.map(p=>word[p]));
+  bf.feedback=null; bf.done=false;
+  bossRender();
+}
+function bossRender(){
+  const bf=bossFight, o=bf.o, word=bf.word;
+  let disp='', k=0;
+  for(let i=0;i<word.length;i++){
+    if(bf.positions.includes(i)){
+      const f=bf.slots[k++];
+      disp+=`<span class="lett-slot ${f?'filled':''}">${f?f.toUpperCase():''}</span>`;
+    }else disp+=`<span class="lett-shown">${word[i].toUpperCase()}</span>`;
+  }
+  const pool=bf.pool.map(l=>`<button class="lett-btn" data-l="${l}" ${bf.done?'disabled':''}>${l.toUpperCase()}</button>`).join('');
+  const fb=bf.feedback?`<div class="feedback ${bf.feedback.cls}">${bf.feedback.text}</div>`:`<div class="feedback"></div>`;
+  let actions;
+  if(bf.done){
+    actions=`<button class="btn gold" id="nextWord">${bf.idx>=5?'🏆 ¡Vencer al jefe!':'Siguiente palabra ▶'}</button>`;
+  }else{
+    actions=`<button class="btn ghost" id="bossDel">⌫ Borrar</button>
+             <button class="btn ghost" onclick="closePanel()">Huir</button>`;
+  }
+  openPanel(`<div class="bosswrap">
+      <div class="boss-face" id="bossFace">${o.face}</div>
+      <div class="barlabel">${o.name} — Palabra ${Math.min(bf.idx+1,5)}/5</div>
+      <div class="bossbar selfbar" style="margin-top:2px"><i id="selfHp" style="width:${state.hp/state.maxHp*100}%"></i></div>
+    </div>
+    <p style="margin:12px 0 4px;font-weight:800;text-align:center">Completa la palabra · faltan <b>${bf.positions.length}</b> letra(s)<br>
+      <span style="font-weight:600;opacity:.85">Pista: significa <b>“${bf.es}”</b></span></p>
+    <div class="lett-word">${disp}</div>
+    <div class="lett-pool">${pool}</div>
+    ${fb}
+    <div class="panel-actions">${actions}</div>`);
+  panel.querySelectorAll('.lett-btn').forEach(b=>b.addEventListener('click',()=>bossFill(b.dataset.l)));
+  const del=panel.querySelector('#bossDel'); if(del) del.onclick=bossClear;
+  const nb=panel.querySelector('#nextWord');
+  if(nb) nb.onclick = bf.idx>=5 ? ()=>winBoss(bf.o) : ()=>bossWord();
+  if(bf.feedback&&bf.feedback.cls==='good'){ const f=document.getElementById('bossFace'); if(f) f.classList.add('boss-shake'); }
+}
+function bossFill(l){
+  const bf=bossFight; if(!bf||bf.done) return;
+  const k=bf.slots.findIndex(s=>s===null);
+  if(k===-1) return;
+  bf.slots[k]=l;
+  if(bf.slots.every(s=>s!==null)) bossCheck();
+  else bossRender();
+}
+function bossClear(){
+  const bf=bossFight; if(!bf) return;
+  for(let k=bf.slots.length-1;k>=0;k--){ if(bf.slots[k]!==null){ bf.slots[k]=null; break; } }
+  bossRender();
+}
+function bossCheck(){
+  const bf=bossFight, word=bf.word;
+  const ok=bf.positions.every((p,k)=>bf.slots[k]===word[p]);
+  if(ok){
+    recordAnswer(true); bf.idx++; bf.done=true; saveState();
+    bf.feedback={cls:'good', text: bf.idx>=5?'¡Última palabra completada! 🎉':'¡Palabra completada! 🎉'};
+    bossRender();
+  }else{
+    recordAnswer(false);
+    const dmg=damageTaken(); state.hp=Math.max(0,state.hp-dmg);
+    updateHUD(); saveState();
+    if(state.hp<=0){ defeated('El jefe te superó esta vez. ¡Equípate mejor y vuelve!'); return; }
+    bf.slots=new Array(bf.positions.length).fill(null);
+    bf.feedback={cls:'bad', text:`Esas letras no eran… (-${dmg} ❤️). Mira la pista y reintenta.`};
+    bossRender();
+  }
+}
+function winBoss(o){
+  state.bossDefeated[island().id]=true; state.gems+=10;
+  const next=ISLANDS[state.islandIndex+1];
+  if(next) state.unlocked[next.id]=true;
+  checkMedals(); updateHUD(); saveState();
+  setObjCleared(o, o.face2);
+  openPanel(`<h2>🎉 ¡${island().name} liberada!</h2>
+    <div class="speaker"><div class="face">🌅</div>
+    <div class="bubble">Venciste a <b>${o.name}</b> usando lo que aprendiste. Recompensa: <b>+10 💎</b>.<br><br>
+    ${next?`Se desbloqueó una nueva isla: <b>${next.name}</b> (${next.theme}). Acércate al muelle del jefe y pulsa <b>🚢 Viajar</b>.`
+          :`¡Has completado todos los módulos disponibles por ahora! Vuelve cuando se sumen nuevas islas. 🏆`}</div></div>
+    <div class="panel-actions">${next?`<button class="btn gold" onclick="openTravel()">🚢 Viajar ahora</button>`:''}
+      <button class="btn ghost" onclick="closePanel()">Cerrar</button></div>`);
+}
+function defeated(msg){
+  state.hp=state.maxHp; updateHUD(); saveState();
+  openPanel(`<h2>💫 Te recuperas</h2>
+    <div class="speaker"><div class="face">😵</div>
+    <div class="bubble">${msg} No pierdes tu progreso: aprende o repasa más palabras y compra más armadura antes de volver.</div></div>
+    <div class="panel-actions"><button class="btn" onclick="closePanel()">Entendido</button></div>`);
+}
+
+/* ---------- Viaje entre islas ---------- */
+function openTravel(){
+  const items=ISLANDS.map((isl,idx)=>{
+    const unlocked=state.unlocked[isl.id];
+    const here=idx===state.islandIndex;
+    const done=state.bossDefeated[isl.id];
+    return `<div class="isl-item ${unlocked?'':'locked'}">
+      <span class="ii-ico">${done?'🏖️':unlocked?'🏝️':'🔒'}</span>
+      <div><div class="ii-name">${isl.name} ${here?'<span class="tag">(aquí)</span>':''}</div>
+      <div class="ii-desc">${isl.theme}</div></div>
+      <div class="ii-go">${unlocked
+        ? (here?'<span class="tag">actual</span>':`<button class="btn" onclick="travelTo(${idx})">Ir</button>`)
+        : '<span class="tag lock">Vence al jefe anterior</span>'}</div>
+    </div>`;}).join('');
+  openPanel(`<h2>🚢 Viajar entre islas</h2>
+    <p style="font-size:13px;opacity:.85;margin-bottom:8px">Cada isla es un módulo de aprendizaje. Vence a su jefe para abrir la siguiente.</p>
+    ${items}
+    <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Cerrar</button></div>`);
+}
+function travelTo(idx){
+  state.islandIndex=idx;
+  state.px=ISLANDS[idx].spawn.x; state.py=ISLANDS[idx].spawn.y; state.yaw=0;
+  state.hp=state.maxHp;
+  buildWorld(); updateHUD(); refreshActionBtn(); saveState(); closePanel();
+  toast('Llegaste a '+ISLANDS[idx].name);
+}
+
+/* ---------- Banco de palabras ---------- */
+document.getElementById('bankBtn').addEventListener('click',openBank);
+document.getElementById('medalStat').addEventListener('click',openMedals);
+document.getElementById('helpBtn').addEventListener('click',showHelp);
+document.getElementById('profileBtn').addEventListener('click',openProfile);
+
+/* ---------- Perfil del jugador ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function openProfile(){
+  const g=state.gear;
+  const it=(key,ico,cls)=>`<span class="fig-item ${cls} ${g[key]?'on':'off'}">${ico}</span>`;
+  const figure=`<div class="figure">
+      <span class="fig-body">🧍</span>
+      ${it('helmet','🪖','fi-helmet')}
+      ${it('chest','🦺','fi-chest')}
+      ${it('pants','👖','fi-pants')}
+      ${it('boots','🥾','fi-boots')}
+      ${it('shield','🛡️','fi-shield')}
+      ${it('sword','🗡️','fi-sword')}
+    </div>`;
+  const owned=SHOP.filter(s=>state.gear[s.key]).length;
+  const items=SHOP.map(s=>`<div class="shop-item">
+      <span class="si-ico">${s.ico}</span>
+      <div><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div></div>
+      <div class="si-buy">${state.gear[s.key]
+        ?'<span class="owned">✔ Equipado</span>'
+        :'<span class="tag lock">Por conseguir</span>'}</div>
+    </div>`).join('');
+  const got=MEDALS.filter(m=>state.medals[m.id]).length;
+  openPanel(`<h2>👤 Perfil</h2>
+    <div class="prof-top">
+      ${figure}
+      <div class="prof-meta">
+        <div class="prof-name">${escapeHtml(state.name)}</div>
+        <div class="prof-stats">💎 ${state.gems} &nbsp; 📖 ${learnedCount()} palabras</div>
+        <div class="prof-stats">🏅 ${got}/${MEDALS.length} logros</div>
+        <div class="prof-stats">🛡️ Equipo: ${owned}/${SHOP.length}</div>
+        <button class="btn ghost" id="editNameBtn">✏️ Editar nombre</button>
+      </div>
+    </div>
+    <div class="wb-sub">Tu equipo (lo que vistes en la figura)</div>
+    ${items}
+    <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Cerrar</button></div>`);
+  const en=panel.querySelector('#editNameBtn'); if(en) en.onclick=editName;
+}
+function editName(){
+  openPanel(`<h2>✏️ Editar nombre</h2>
+    <div class="speaker"><div class="face">👤</div>
+    <div class="bubble">¿Cómo quieres que te llamen, aventurero/a?</div></div>
+    <input id="nameInput" class="name-input" maxlength="16" value="${escapeHtml(state.name)}" />
+    <div class="feedback" id="fb"></div>
+    <div class="panel-actions">
+      <button class="btn ghost" onclick="openProfile()">Cancelar</button>
+      <button class="btn gold" id="saveName">Guardar</button>
+    </div>`);
+  const inp=panel.querySelector('#nameInput'); inp.focus(); inp.select();
+  panel.querySelector('#saveName').onclick=()=>{
+    const v=inp.value.trim();
+    if(!v){ const f=document.getElementById('fb'); f.className='feedback bad'; f.textContent='Escribe un nombre.'; return; }
+    state.name=v.slice(0,16); saveState(); toast('✅ Nombre actualizado'); openProfile();
+  };
+}
+function openBank(){
+  const ids=Object.keys(state.learned);
+  const stars=m=>'⭐'.repeat(m)+'·'.repeat(3-m);
+  const cards=ids.length? ids.map(id=>{
+    const w=byId(id), s=state.learned[id];
+    return `<div class="wb-card ${s.rusty?'rusty':''}">
+      <div class="wb-en">${w.en}</div><div class="wb-es">${w.es}</div>
+      <div class="wb-mast">Dominio: ${stars(s.mastery)}</div>
+      ${s.rusty?'<div class="wb-rusty-tag">⚠ por repasar</div>':''}</div>`;}).join('')
+    : '<div class="empty">Aún no aprendes palabras.<br>Habla con un aldeano (💬) para empezar.</div>';
+  const p=islandProgress();
+  openPanel(`<h2>📖 Mis palabras (${ids.length})</h2>
+    <p style="font-size:13px;opacity:.85;margin-bottom:6px">Tus palabras son tu moneda y tu fuerza. Más dominio = más daño.</p>
+    <div class="wb-sub">${island().name}: ${p.done}/${p.total} aprendidas</div>
+    <div class="wb-grid">${cards}</div>
+    <div class="panel-actions">
+      <button class="btn gold" onclick="openMedals()">🏅 Logros</button>
+      <button class="btn ghost" onclick="openTravel()">🚢 Viajar</button>
+      <button class="btn danger" onclick="confirmReset()">↺ Reiniciar</button>
+      <button class="btn ghost" onclick="closePanel()">Cerrar</button></div>`);
+}
+function confirmReset(){
+  openPanel(`<h2>↺ Reiniciar progreso</h2>
+    <div class="speaker"><div class="face">⚠️</div>
+    <div class="bubble">Esto borra tus palabras, gemas y equipo. ¿Seguro?</div></div>
+    <div class="panel-actions">
+      <button class="btn ghost" onclick="openBank()">Cancelar</button>
+      <button class="btn danger" onclick="resetGame()">Sí, reiniciar</button></div>`);
+}
+
+/* ---------- Teclado / pad ---------- */
+window.addEventListener('keydown',e=>{
+  if(e.target && /^(input|textarea|select)$/i.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  // Atajos dentro de los retos: 1-4 elige opción, letras rellenan al jefe, Enter avanza.
+  if(overlay.classList.contains('show')){
+    if(/^[a-z]$/.test(k)){
+      const lb=[...panel.querySelectorAll('.lett-btn:not(:disabled)')].find(b=>b.dataset.l===k);
+      if(lb){ lb.click(); e.preventDefault(); return; }
+    }
+    if(['1','2','3','4'].includes(k)){
+      const choices=panel.querySelectorAll('.choice:not(:disabled)');
+      const idx=+k-1; if(choices[idx]){ choices[idx].click(); e.preventDefault(); }
+      return;
+    }
+    if(k==='enter'){
+      const act=panel.querySelector('.panel-actions .btn:not(.ghost):not(.danger)')
+              || panel.querySelector('.panel-actions .btn');
+      if(act){ act.click(); e.preventDefault(); }
+      return;
+    }
+    if(k==='escape') closePanel();
+    return;
+  }
+  // Movimiento 3D POV: ▲▼/W,S avanzan; ◀▶/A,D giran.
+  if(['arrowup','w'].includes(k)){ input.f=true; e.preventDefault(); }
+  else if(['arrowdown','s'].includes(k)){ input.b=true; e.preventDefault(); }
+  else if(['arrowleft','a'].includes(k)){ input.l=true; e.preventDefault(); }
+  else if(['arrowright','d'].includes(k)){ input.r=true; e.preventDefault(); }
+  else if(k==='e'){const o=nearestInteractable(); if(o) interact(o);}
+  else if(k==='m') openTravel();
+});
+window.addEventListener('keyup',e=>{
+  const k=e.key.toLowerCase();
+  if(['arrowup','w'].includes(k)) input.f=false;
+  else if(['arrowdown','s'].includes(k)) input.b=false;
+  else if(['arrowleft','a'].includes(k)) input.l=false;
+  else if(['arrowright','d'].includes(k)) input.r=false;
+});
+/* d-pad: mantener pulsado mueve/gira (▲▼ avanzar, ◀▶ girar) */
+const DIRMAP={up:'f',down:'b',left:'l',right:'r'};
+document.querySelectorAll('.dpad button').forEach(b=>{
+  const key=DIRMAP[b.dataset.dir];
+  const on =e=>{ e.preventDefault(); input[key]=true;  b.classList.add('held');  fadeLookHint(); };
+  const off=e=>{ e.preventDefault(); input[key]=false; b.classList.remove('held'); };
+  b.addEventListener('pointerdown',on);
+  b.addEventListener('pointerup',off);
+  b.addEventListener('pointerleave',off);
+  b.addEventListener('pointercancel',off);
+});
+
+/* ---------- Intro / Ayuda ---------- */
+const NPC_LEGEND=`<div class="bubble" style="margin-top:10px;font-size:13px">
+    <b>¿Quién es quién?</b><br>
+    💬 Maestro: te da pistas para aprender · 🔁 Repaso: refresca palabras
+    · 🏪 Tienda: compra equipo demostrando lo aprendido
+    · ⚔️ Enemigos: combate · 👹 Jefe: vencelo para abrir la siguiente isla.</div>`;
+function intro(){
+  openPanel(`<h2 class="pixel" style="font-size:12px">APRENDER JUGANDO · 3D</h2>
+    <div class="speaker"><div class="face">🏝️</div>
+    <div class="bubble">Explora la <b>${island().name}</b> ahora <b>en primera persona</b>. Para liberarla:
+    <br>1️⃣ Habla con los aldeanos: te dan <b>pistas</b>, no respuestas. Tú deduces la palabra.
+    <br>2️⃣ Cada palabra aprendida es <b>moneda y fuerza</b>.
+    <br>3️⃣ Despeja enemigos, compra equipo y vence al <b>jefe</b> para abrir la siguiente isla.
+    <br><br>🕹️ <b>Recorre el mapa en 3D:</b> ▲▼ (o W/S) para avanzar y retroceder, ◀▶ (o A/D) para girar, y <b>arrastra</b> sobre el mundo para mirar alrededor. Acércate a alguien y pulsa <b>E</b> (o el botón dorado) para interactuar.
+    <br>En los retos puedes pulsar <b>1–4</b> para responder y <b>Enter</b> para continuar.</div></div>
+    ${NPC_LEGEND}
+    <div class="panel-actions"><button class="btn gold" onclick="closePanel()">¡Empezar!</button></div>`);
+}
+function showHelp(){
+  openPanel(`<h2>❓ Ayuda</h2>
+    <div class="speaker"><div class="face">🗺️</div>
+    <div class="bubble"><b>Objetivo:</b> lo que aprendes es tu moneda y tu arma. Aprende palabras,
+    equípate en la tienda y vence al jefe para abrir nuevas islas.<br><br>
+    <b>Controles 3D:</b> ▲▼ o <b>W/S</b> avanzar/retroceder · ◀▶ o <b>A/D</b> girar
+    · <b>arrastra</b> sobre el mundo para mirar · interactuar con <b>E</b> o el botón dorado
+    · menú de viaje con <b>M</b> · cerrar con <b>Esc</b>.<br>
+    En los retos: teclas <b>1–4</b> para elegir y <b>Enter</b> para avanzar.<br><br>
+    Gana <b>🏅 logros</b> por tus hitos: míralos en el HUD o en 📖 Mis palabras.</div></div>
+    ${NPC_LEGEND}
+    <div class="panel-actions"><button class="btn gold" onclick="closePanel()">Entendido</button></div>`);
+}
+
+/* ---------- Init ---------- */
+function boot(){
+  if(typeof THREE==='undefined'){
+    worldEl.innerHTML='<div style="padding:24px;text-align:center;font-weight:800">No se pudo cargar el motor 3D (Three.js).<br>Revisa tu conexión a internet y recarga.</div>';
+    return;
+  }
+  buildWorld(); updateHUD(); refreshActionBtn();
+  checkMedals();
+  if(Object.keys(state.learned).length===0 && state.islandIndex===0) intro();
+}
+boot();
+</script>
+</body>
+</html>

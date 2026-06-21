@@ -9,14 +9,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --sea:#2e6ca4; --sea2:#1f5384;
-    --grass:#6aab4a; --grass2:#5b9a3d;
+    --minecraft-grass: #7cb342;
+    --minecraft-dirt: #8b7355;
+    --minecraft-stone: #7f8287;
+    --minecraft-cobble: #696b6d;
+    --minecraft-wood: #8b6f47;
+    --minecraft-oak-log: #6b5d4f;
+    --minecraft-planks: #c19a6b;
+    --minecraft-gold: #ffd700;
+    --minecraft-emerald: #50c878;
+    --minecraft-blue: #4a90e2;
+    --minecraft-red: #e74c3c;
+    --minecraft-dark: #1a1a1a;
+    --minecraft-light: #ffffff;
+    --sea:#3b7dc9; --sea2:#2d5aa4;
+    --grass:var(--minecraft-grass); --grass2:#6fa030;
     --sand:#e6cf8f; --path:#b0814e; --path2:#9a6f40;
     --snow:#dfe9f2; --snow2:#c3d4e4;
-    --rock:#9aa0a6;
-    --wood:#3a2a1c; --wood2:#4d3826;
-    --cream:#f5ecd6; --gold:#e6a52c; --leaf:#7ac24a;
-    --danger:#c0392b; --hp:#d44; --hpbg:#5a2320;
+    --rock:var(--minecraft-stone);
+    --wood:var(--minecraft-wood); --wood2:var(--minecraft-oak-log);
+    --cream:#f5ecd6; --gold:var(--minecraft-gold); --leaf:var(--minecraft-emerald);
+    --danger:var(--minecraft-red); --hp:var(--minecraft-red); --hpbg:#3d1f1f;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
@@ -32,31 +45,34 @@
 
   #game{
     width:100%; max-width:560px;
-    background:linear-gradient(180deg,#241a10,#1a130b);
-    border:4px solid var(--wood2);
-    border-radius:10px;
-    box-shadow:0 0 0 4px #16110b,0 18px 40px rgba(0,0,0,.6);
+    background:var(--minecraft-dark);
+    border:6px solid var(--minecraft-dark);
+    border-radius:0;
+    box-shadow:0 0 0 3px var(--minecraft-stone),0 0 0 6px var(--minecraft-dark),0 18px 40px rgba(0,0,0,.8);
     overflow:hidden;
     position:relative;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
   }
 
   /* ---------- HUD ---------- */
   #hud{
-    display:flex; align-items:center; gap:10px;
-    padding:10px 12px; background:var(--wood);
-    border-bottom:4px solid #16110b;
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; background:var(--minecraft-stone);
+    border-bottom:4px solid var(--minecraft-dark);
+    border-top:2px solid var(--minecraft-cobble);
     flex-wrap:wrap;
   }
-  #hud .title{font-size:11px; color:var(--gold); margin-right:auto}
-  #hud .island{font-size:10px; color:var(--leaf); width:100%; order:5; opacity:.9}
-  .stat{display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800}
-  .stat .ico{font-size:15px}
-  .hpbar{width:84px; height:12px; background:var(--hpbg); border:2px solid #16110b; border-radius:3px; overflow:hidden}
-  .hpbar > i{display:block; height:100%; background:linear-gradient(90deg,#e85d52,#d44); transition:width .3s}
+  #hud .title{font-size:11px; color:var(--minecraft-gold); margin-right:auto; text-shadow:2px 2px 0 rgba(0,0,0,.5)}
+  #hud .island{font-size:10px; color:var(--minecraft-emerald); width:100%; order:5; opacity:1; text-shadow:1px 1px 0 rgba(0,0,0,.3)}
+  .stat{display:flex; align-items:center; gap:4px; font-size:10px; font-weight:800; text-shadow:1px 1px 0 rgba(0,0,0,.3)}
+  .stat .ico{font-size:14px}
+  .hpbar{width:80px; height:10px; background:var(--minecraft-dark); border:3px solid var(--minecraft-dark); border-radius:0; overflow:hidden; box-shadow:inset 0 0 0 1px var(--minecraft-cobble)}
+  .hpbar > i{display:block; height:100%; background:var(--minecraft-red); transition:width .3s; box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
 
   /* ---------- World (3D) ---------- */
-  #worldWrap{position:relative; background:var(--sea); overflow:hidden;
-    height:56vh; max-height:440px; min-height:280px}
+  #worldWrap{position:relative; background:var(--minecraft-blue); overflow:hidden;
+    height:56vh; max-height:440px; min-height:280px; border-bottom:2px solid var(--minecraft-stone)}
   #world{position:absolute; inset:0}
   #world canvas{display:block; width:100%; height:100%; touch-action:none}
   /* mira / crosshair POV */
@@ -73,175 +89,176 @@
 
   /* ---------- Controls ---------- */
   #controls{display:flex; align-items:center; justify-content:space-between;
-    padding:10px 14px; background:var(--wood); border-top:4px solid #16110b; gap:10px}
-  .dpad{display:grid; grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px); gap:4px}
-  .dpad button{grid-column:2; background:var(--wood2); color:var(--cream);
-    border:2px solid #16110b; border-radius:6px; font-size:16px; cursor:pointer; user-select:none}
+    padding:10px 12px; background:var(--minecraft-stone); border-top:4px solid var(--minecraft-dark); border-bottom:2px solid var(--minecraft-cobble); gap:10px}
+  .dpad{display:grid; grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px); gap:3px}
+  .dpad button{grid-column:2; background:var(--minecraft-stone); color:var(--minecraft-light);
+    border:4px solid; border-color:var(--minecraft-cobble) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-cobble); border-radius:0; font-size:16px; cursor:pointer; user-select:none; font-weight:800; box-shadow:inset -2px -2px 0 rgba(0,0,0,.3)}
   .dpad .left{grid-column:1; grid-row:2}
   .dpad .up{grid-row:1}
   .dpad .down{grid-row:3}
   .dpad .right{grid-column:3; grid-row:2}
-  .dpad button.held,.dpad button:active{background:var(--gold); color:#16110b}
-  .ctrl-right{display:flex; flex-direction:column; gap:8px}
-  .btn{font-family:'Nunito',sans-serif; font-weight:800; cursor:pointer;
-    border:2px solid #16110b; border-radius:7px; padding:9px 12px; font-size:13px;
-    background:var(--leaf); color:#143707}
-  .btn.gold{background:var(--gold); color:#3a2a05}
-  .btn.ghost{background:var(--wood2); color:var(--cream)}
-  .btn.danger{background:var(--danger); color:#fff}
-  .btn:active{transform:translateY(1px)}
-  .btn:disabled{opacity:.45; cursor:not-allowed}
-  .hint-key{font-size:9px; opacity:.7; text-align:center}
+  .dpad button.held,.dpad button:active{background:var(--minecraft-grass); color:var(--minecraft-dark); box-shadow:inset 2px 2px 0 rgba(0,0,0,.2)}
+  .ctrl-right{display:flex; flex-direction:column; gap:6px}
+  .btn{font-family:'Press Start 2P',monospace; font-weight:800; cursor:pointer;
+    border:4px solid; border-color:var(--minecraft-cobble) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-cobble); border-radius:0; padding:8px 10px; font-size:10px;
+    background:var(--minecraft-emerald); color:var(--minecraft-dark); box-shadow:inset -2px -2px 0 rgba(0,0,0,.3)}
+  .btn.gold{background:var(--minecraft-gold); color:var(--minecraft-dark)}
+  .btn.ghost{background:var(--minecraft-oak-log); color:var(--minecraft-light)}
+  .btn.danger{background:var(--minecraft-red); color:var(--minecraft-light)}
+  .btn:active{transform:translateY(2px); box-shadow:inset 1px 1px 0 rgba(0,0,0,.3)}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+  .hint-key{font-size:9px; opacity:.8; text-align:center; color:var(--minecraft-light)}
 
   /* ---------- Modal ---------- */
-  #overlay{position:absolute; inset:0; background:rgba(8,5,2,.78);
+  #overlay{position:absolute; inset:0; background:rgba(0,0,0,.85);
     display:none; align-items:center; justify-content:center; padding:16px; z-index:20}
   #overlay.show{display:flex}
-  .panel{width:100%; max-width:420px; background:var(--wood);
-    border:4px solid var(--gold); border-radius:12px; padding:18px;
-    box-shadow:0 12px 30px rgba(0,0,0,.5); animation:pop .18s ease;
+  .panel{width:100%; max-width:420px; background:var(--minecraft-oak-log);
+    border:8px solid; border-color:var(--minecraft-planks) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-planks); border-radius:0; padding:16px;
+    box-shadow:0 12px 30px rgba(0,0,0,.8); animation:pop .18s ease;
     max-height:90%; overflow:auto}
   @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
-  .panel h2{font-size:13px; color:var(--gold); margin-bottom:10px; display:flex; align-items:center; gap:8px}
-  .speaker{display:flex; gap:10px; align-items:flex-start; margin-bottom:12px}
-  .speaker .face{font-size:34px}
-  .bubble{background:var(--wood2); border:2px solid #16110b; border-radius:8px;
-    padding:10px 12px; font-size:15px; line-height:1.5; flex:1}
-  .bubble b{color:var(--gold)}
-  .wordbig{font-family:'Press Start 2P',monospace; font-size:18px; color:var(--leaf);
-    text-align:center; margin:6px 0 14px}
-  .choices{display:grid; gap:8px}
-  .choice{font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; text-align:left;
-    background:var(--cream); color:#2a1c0e; border:2px solid #16110b; border-radius:8px;
-    padding:11px 13px; cursor:pointer}
-  .choice:hover{background:#fff}
-  .choice.correct{background:var(--leaf); color:#143707}
-  .choice.wrong{background:var(--danger); color:#fff}
+  .panel h2{font-size:12px; color:var(--minecraft-gold); margin-bottom:10px; display:flex; align-items:center; gap:8px; text-shadow:2px 2px 0 rgba(0,0,0,.5)}
+  .speaker{display:flex; gap:8px; align-items:flex-start; margin-bottom:12px}
+  .speaker .face{font-size:32px}
+  .bubble{background:var(--minecraft-light); border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0;
+    padding:10px 12px; font-size:13px; line-height:1.4; flex:1; color:var(--minecraft-dark)}
+  .bubble b{color:var(--minecraft-gold)}
+  .wordbig{font-family:'Press Start 2P',monospace; font-size:16px; color:var(--minecraft-emerald);
+    text-align:center; margin:6px 0 14px; text-shadow:2px 2px 0 rgba(0,0,0,.3)}
+  .choices{display:grid; gap:6px}
+  .choice{font-family:'Press Start 2P',monospace; font-weight:800; font-size:10px; text-align:left;
+    background:var(--minecraft-light); color:var(--minecraft-dark); border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0;
+    padding:10px 12px; cursor:pointer; box-shadow:inset -2px -2px 0 rgba(0,0,0,.2)}
+  .choice:hover{background:var(--minecraft-cobble); color:var(--minecraft-light)}
+  .choice.correct{background:var(--minecraft-emerald); color:var(--minecraft-dark); box-shadow:inset -2px -2px 0 rgba(0,0,0,.3)}
+  .choice.wrong{background:var(--minecraft-red); color:var(--minecraft-light); box-shadow:inset -2px -2px 0 rgba(0,0,0,.3)}
   .choice:disabled{cursor:default}
-  .feedback{margin-top:12px; font-size:14px; font-weight:800; min-height:20px}
-  .feedback.good{color:var(--leaf)}
-  .feedback.bad{color:#ff9a8f}
+  .feedback{margin-top:12px; font-size:13px; font-weight:800; min-height:20px; color:var(--minecraft-light)}
+  .feedback.good{color:var(--minecraft-emerald)}
+  .feedback.bad{color:var(--minecraft-red)}
   .panel-actions{display:flex; gap:8px; margin-top:14px; justify-content:flex-end; flex-wrap:wrap}
 
   /* shop */
-  .shop-item{display:flex; align-items:center; gap:10px; background:var(--wood2);
-    border:2px solid #16110b; border-radius:8px; padding:10px; margin-bottom:8px}
-  .shop-item .si-ico{font-size:26px}
-  .shop-item .si-name{font-weight:800; font-size:14px}
-  .shop-item .si-desc{font-size:12px; opacity:.8}
+  .shop-item{display:flex; align-items:center; gap:8px; background:var(--minecraft-planks);
+    border:4px solid; border-color:var(--minecraft-wood) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-wood); border-radius:0; padding:10px; margin-bottom:8px; box-shadow:inset -2px -2px 0 rgba(0,0,0,.2)}
+  .shop-item .si-ico{font-size:24px}
+  .shop-item .si-name{font-weight:800; font-size:12px; color:var(--minecraft-dark)}
+  .shop-item .si-desc{font-size:11px; opacity:.75; color:var(--minecraft-dark)}
   .shop-item .si-buy{margin-left:auto; text-align:right}
-  .price{font-size:12px; font-weight:800; color:var(--gold); margin-bottom:4px}
-  .owned{font-size:11px; color:var(--leaf); font-weight:800}
+  .price{font-size:11px; font-weight:800; color:var(--minecraft-gold); margin-bottom:4px}
+  .owned{font-size:10px; color:var(--minecraft-emerald); font-weight:800}
 
   /* word bank */
-  .wb-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:46vh; overflow:auto; margin-top:4px}
-  .wb-card{background:var(--cream); color:#2a1c0e; border:2px solid #16110b;
-    border-radius:8px; padding:8px 10px}
-  .wb-en{font-family:'Press Start 2P',monospace; font-size:11px; color:#6b3f12}
-  .wb-es{font-size:14px; font-weight:800; margin-top:3px}
-  .wb-mast{margin-top:5px; font-size:13px}
-  .wb-card.rusty{background:#e8d9b8; outline:2px dashed var(--danger)}
-  .wb-rusty-tag{font-size:10px; color:var(--danger); font-weight:800}
-  .empty{opacity:.7; font-size:14px; text-align:center; padding:18px}
-  .wb-sub{font-size:12px; opacity:.85; margin:8px 0 4px; color:var(--leaf); font-weight:800}
+  .wb-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px; max-height:46vh; overflow:auto; margin-top:4px}
+  .wb-card{background:var(--minecraft-light); color:var(--minecraft-dark); border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone);
+    border-radius:0; padding:8px 10px; box-shadow:inset -1px -1px 0 rgba(0,0,0,.2)}
+  .wb-en{font-family:'Press Start 2P',monospace; font-size:9px; color:var(--minecraft-dark); opacity:.7}
+  .wb-es{font-size:12px; font-weight:800; margin-top:3px; color:var(--minecraft-dark)}
+  .wb-mast{margin-top:5px; font-size:11px; color:var(--minecraft-dark)}
+  .wb-card.rusty{background:var(--minecraft-gold); border-color:var(--minecraft-gold) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-gold)}
+  .wb-rusty-tag{font-size:9px; color:var(--minecraft-red); font-weight:800}
+  .empty{opacity:.5; font-size:12px; text-align:center; padding:18px; color:var(--minecraft-light)}
+  .wb-sub{font-size:11px; opacity:.85; margin:8px 0 4px; color:var(--minecraft-emerald); font-weight:800}
 
   /* medals / achievements */
   #hud .stat.clickable{cursor:pointer}
   #objective{
-    display:flex; align-items:center; gap:8px;
-    padding:7px 12px; background:#2a1f12; border-bottom:4px solid #16110b;
-    font-size:12px; font-weight:800; color:var(--cream)}
+    display:flex; align-items:center; gap:6px;
+    padding:8px 10px; background:var(--minecraft-cobble); border-bottom:4px solid var(--minecraft-dark);
+    font-size:11px; font-weight:800; color:var(--minecraft-light)}
   #objective .ob-ico{font-size:16px}
-  #objective .ob-text b{color:var(--gold)}
-  #objective .ob-prog{margin-left:auto; font-size:11px; color:var(--leaf); white-space:nowrap}
-  .medal-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:52vh; overflow:auto; margin-top:6px}
-  .medal-card{display:flex; gap:9px; align-items:center; background:var(--cream); color:#2a1c0e;
-    border:2px solid #16110b; border-radius:8px; padding:8px 10px}
-  .medal-card.locked{filter:grayscale(1); opacity:.55}
-  .medal-card .m-ico{font-size:26px}
-  .medal-card .m-name{font-weight:800; font-size:13px}
-  .medal-card .m-desc{font-size:11px; opacity:.8}
-  .toast.medal{background:var(--gold); color:#3a2a05; border-color:#3a2a05}
+  #objective .ob-text b{color:var(--minecraft-gold)}
+  #objective .ob-prog{margin-left:auto; font-size:10px; color:var(--minecraft-emerald); white-space:nowrap}
+  .medal-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px; max-height:52vh; overflow:auto; margin-top:6px}
+  .medal-card{display:flex; gap:8px; align-items:center; background:var(--minecraft-light); color:var(--minecraft-dark);
+    border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0; padding:8px 10px; box-shadow:inset -1px -1px 0 rgba(0,0,0,.2)}
+  .medal-card.locked{filter:grayscale(1); opacity:.4}
+  .medal-card .m-ico{font-size:24px}
+  .medal-card .m-name{font-weight:800; font-size:11px}
+  .medal-card .m-desc{font-size:10px; opacity:.75}
+  .toast.medal{background:var(--minecraft-gold); color:var(--minecraft-dark); border-color:var(--minecraft-dark)}
 
   /* boss: completar palabras (letras faltantes) */
-  .lett-word{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:8px 0 12px}
-  .lett-shown,.lett-slot{font-family:'Press Start 2P',monospace; font-size:15px;
-    width:28px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:6px}
-  .lett-shown{color:var(--leaf)}
-  .lett-slot{background:var(--wood2); border:2px dashed var(--gold); color:var(--cream)}
-  .lett-slot.filled{background:var(--cream); color:#2a1c0e; border-style:solid}
-  .lett-pool{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin:6px 0 2px}
-  .lett-btn{font-family:'Press Start 2P',monospace; font-size:13px; min-width:38px; padding:11px 8px;
-    background:var(--cream); color:#2a1c0e; border:2px solid #16110b; border-radius:7px; cursor:pointer}
-  .lett-btn:hover{background:#fff}
-  .lett-btn:active{transform:translateY(1px)}
-  .lett-btn:disabled{opacity:.4; cursor:default}
+  .lett-word{display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin:8px 0 12px}
+  .lett-shown,.lett-slot{font-family:'Press Start 2P',monospace; font-size:14px;
+    width:26px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:0; border:3px solid var(--minecraft-dark)}
+  .lett-shown{color:var(--minecraft-emerald)}
+  .lett-slot{background:var(--minecraft-oak-log); border:3px dashed var(--minecraft-gold); color:var(--minecraft-light)}
+  .lett-slot.filled{background:var(--minecraft-light); color:var(--minecraft-dark); border-style:solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone)}
+  .lett-pool{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:6px 0 2px}
+  .lett-btn{font-family:'Press Start 2P',monospace; font-size:11px; min-width:36px; padding:8px 6px;
+    background:var(--minecraft-light); color:var(--minecraft-dark); border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0; cursor:pointer; box-shadow:inset -1px -1px 0 rgba(0,0,0,.2)}
+  .lett-btn:hover{background:var(--minecraft-cobble); color:var(--minecraft-light)}
+  .lett-btn:active{transform:translateY(2px); box-shadow:inset 1px 1px 0 rgba(0,0,0,.2)}
+  .lett-btn:disabled{opacity:.3; cursor:default}
 
   /* combat (enemies that multiply) */
-  .enemy-row{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:4px 0 10px}
-  .enemy{width:34px;height:34px;border:2px solid #16110b;border-radius:6px;
-    background:linear-gradient(#9b5fb0,#5a2a6e);
-    display:flex;align-items:center;justify-content:center;font-size:18px}
-  .enemy.dead{background:#241a10; opacity:.4}
+  .enemy-row{display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin:4px 0 10px}
+  .enemy{width:32px;height:32px;border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone);border-radius:0;
+    background:var(--minecraft-red);
+    display:flex;align-items:center;justify-content:center;font-size:16px; box-shadow:inset -1px -1px 0 rgba(0,0,0,.3)}
+  .enemy.dead{background:var(--minecraft-dark); opacity:.3}
 
   /* boss */
   .bosswrap{text-align:center}
-  .boss-face{font-size:46px; margin:4px 0; filter:drop-shadow(0 0 8px rgba(192,57,43,.7))}
+  .boss-face{font-size:44px; margin:4px 0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
   .boss-shake{animation:shake .3s}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-  .barlabel{font-size:10px; text-align:left; margin:8px 0 3px}
-  .bossbar{height:14px; background:#3a1410; border:2px solid #16110b; border-radius:4px; overflow:hidden}
-  .bossbar > i{display:block; height:100%; background:linear-gradient(90deg,#e74c3c,#c0392b); transition:width .35s}
-  .selfbar > i{background:linear-gradient(90deg,#e85d52,#d44)}
+  .barlabel{font-size:10px; text-align:left; margin:8px 0 3px; color:var(--minecraft-light)}
+  .bossbar{height:12px; background:var(--minecraft-dark); border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0; overflow:hidden}
+  .bossbar > i{display:block; height:100%; background:var(--minecraft-red); transition:width .35s}
+  .selfbar > i{background:var(--minecraft-emerald)}
 
   /* island travel */
-  .isl-item{display:flex; align-items:center; gap:10px; background:var(--wood2);
-    border:2px solid #16110b; border-radius:8px; padding:10px; margin-bottom:8px}
-  .isl-item .ii-ico{font-size:26px}
-  .isl-item .ii-name{font-weight:800; font-size:14px}
-  .isl-item .ii-desc{font-size:12px; opacity:.8}
+  .isl-item{display:flex; align-items:center; gap:8px; background:var(--minecraft-planks);
+    border:4px solid; border-color:var(--minecraft-wood) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-wood); border-radius:0; padding:10px; margin-bottom:8px; box-shadow:inset -2px -2px 0 rgba(0,0,0,.2)}
+  .isl-item .ii-ico{font-size:24px}
+  .isl-item .ii-name{font-weight:800; font-size:12px; color:var(--minecraft-dark)}
+  .isl-item .ii-desc{font-size:11px; opacity:.75; color:var(--minecraft-dark)}
   .isl-item .ii-go{margin-left:auto}
-  .locked{opacity:.6}
-  .tag{font-size:10px; font-weight:800; color:var(--leaf)}
-  .tag.lock{color:var(--gold)}
+  .locked{opacity:.5}
+  .tag{font-size:9px; font-weight:800; color:var(--minecraft-emerald)}
+  .tag.lock{color:var(--minecraft-gold)}
 
   .toast{position:absolute; left:50%; bottom:96px; transform:translateX(-50%);
-    background:var(--leaf); color:#143707; font-weight:800; font-size:13px;
-    padding:8px 14px; border-radius:8px; border:2px solid #16110b; z-index:30;
-    opacity:0; transition:opacity .25s, bottom .25s; pointer-events:none; text-align:center}
+    background:var(--minecraft-emerald); color:var(--minecraft-dark); font-weight:800; font-size:11px;
+    padding:8px 14px; border-radius:0; border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); z-index:30;
+    opacity:0; transition:opacity .25s, bottom .25s; pointer-events:none; text-align:center; box-shadow:0 4px 8px rgba(0,0,0,.5)}
   .toast.show{opacity:1; bottom:110px}
-  .toast.warn{background:var(--gold); color:#3a2a05}
+  .toast.warn{background:var(--minecraft-gold); color:var(--minecraft-dark)}
 
   /* perfil del jugador */
-  .prof-top{display:flex; gap:14px; align-items:center; margin-bottom:8px}
+  .prof-top{display:flex; gap:12px; align-items:center; margin-bottom:8px}
   .prof-meta{flex:1; min-width:0}
-  .prof-name{font-family:'Press Start 2P',monospace; font-size:12px; color:var(--gold);
+  .prof-name{font-family:'Press Start 2P',monospace; font-size:11px; color:var(--minecraft-gold);
     margin-bottom:8px; word-break:break-word; line-height:1.5}
-  .prof-stats{font-size:13px; font-weight:800; margin-bottom:4px}
-  .figure{position:relative; width:118px; height:168px; flex:none;
-    background:radial-gradient(circle at 50% 35%, #34271a, #1a130b);
-    border:3px solid var(--wood2); border-radius:12px; box-shadow:inset 0 0 0 2px #16110b}
+  .prof-stats{font-size:12px; font-weight:800; margin-bottom:4px; color:var(--minecraft-light)}
+  .figure{position:relative; width:116px; height:166px; flex:none;
+    background:var(--minecraft-cobble);
+    border:4px solid; border-color:var(--minecraft-planks) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-planks); border-radius:0; box-shadow:inset 0 0 0 2px var(--minecraft-dark)}
   .fig-body{position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
-    font-size:92px; filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
-  .fig-item{position:absolute; font-size:26px; line-height:1}
-  .fig-item.off{opacity:.16; filter:grayscale(1)}
-  .fig-item.on{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55))}
+    font-size:90px; filter:drop-shadow(2px 2px 0 rgba(0,0,0,.6))}
+  .fig-item{position:absolute; font-size:24px; line-height:1}
+  .fig-item.off{opacity:.15; filter:grayscale(1)}
+  .fig-item.on{filter:drop-shadow(1px 1px 0 rgba(0,0,0,.6))}
   .fi-helmet{top:4px;  left:50%; transform:translateX(-50%)}
   .fi-chest {top:60px; left:50%; transform:translateX(-50%)}
   .fi-pants {top:100px;left:50%; transform:translateX(-50%)}
   .fi-boots {bottom:4px;left:50%; transform:translateX(-50%)}
   .fi-shield{top:64px; left:4px}
   .fi-sword {top:64px; right:4px}
-  .name-input{width:100%; font-family:'Nunito',sans-serif; font-weight:800; font-size:16px;
-    padding:10px 12px; border:2px solid #16110b; border-radius:8px;
-    background:var(--cream); color:#2a1c0e; margin:8px 0}
+  .name-input{width:100%; font-family:'Press Start 2P',monospace; font-weight:800; font-size:11px;
+    padding:10px 12px; border:4px solid; border-color:var(--minecraft-stone) var(--minecraft-dark) var(--minecraft-dark) var(--minecraft-stone); border-radius:0;
+    background:var(--minecraft-light); color:var(--minecraft-dark); margin:8px 0}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none!important; transition:none!important}
   }
   @media (max-width:430px){
-    .btn{font-size:12px; padding:8px 10px}
+    .btn{font-size:9px; padding:7px 9px}
     #worldWrap{height:48vh}
+    .hint-key{font-size:8px}
   }
 </style>
 </head>

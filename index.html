@@ -917,32 +917,88 @@ function addDecor(x,y){
   }
 }
 
+/* ---------- Mobs de Minecraft para los NPCs (aldeanos, slime, creeper) ---------- */
+function creeperFaceTexture(){
+  return pixelTexture(8,(g)=>{
+    g.fillStyle='#5fbf3f'; g.fillRect(0,0,8,8);
+    g.fillStyle='#0a1a0a';
+    g.fillRect(1,2,2,2); g.fillRect(5,2,2,2);          // ojos
+    g.fillRect(3,4,2,2); g.fillRect(2,6,2,1); g.fillRect(4,6,2,1); // boca
+  });
+}
+/* aldeano: piernas, túnica, brazos al frente, cabeza con nariz grande y uniceja */
+function buildVillager(robe, head, nose){
+  const g=new THREE.Group();
+  const ll=box(0.16,0.32,0.18,0x4a3621); ll.position.set(-0.1,0.16,0);
+  const rl=box(0.16,0.32,0.18,0x4a3621); rl.position.set(0.1,0.16,0);
+  const body=box(0.5,0.6,0.3,robe);      body.position.y=0.62;
+  const arms=box(0.56,0.18,0.22,robe);   arms.position.set(0,0.7,-0.07);
+  const h=box(0.42,0.42,0.42,head);      h.position.y=1.13;
+  const no=box(0.12,0.2,0.13,nose);      no.position.set(0,1.07,-0.25);
+  const brow=box(0.34,0.05,0.02,0x3a2a1c); brow.position.set(0,1.21,-0.215);
+  g.add(ll,rl,body,arms,h,no,brow);
+  return g;
+}
+/* slime: cubo verde translúcido con cubo interior y cara */
+function buildSlime(){
+  const g=new THREE.Group();
+  const outer=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.62,0.62),
+    new THREE.MeshLambertMaterial({color:0x66c24a,transparent:true,opacity:.82}));
+  outer.position.y=0.31;
+  const inner=box(0.3,0.3,0.3,0x3f8f2a); inner.position.y=0.31;
+  const eL=box(0.08,0.08,0.04,0x14210f); eL.position.set(-0.13,0.36,-0.32);
+  const eR=box(0.08,0.08,0.04,0x14210f); eR.position.set(0.13,0.36,-0.32);
+  const mo=box(0.07,0.07,0.04,0x14210f); mo.position.set(0,0.22,-0.32);
+  g.add(outer,inner,eL,eR,mo);
+  g.userData.kind='slime'; g.userData.cube=outer;
+  return g;
+}
+/* creeper: 4 patas, cuerpo alto y cabeza con la cara clásica */
+function buildCreeper(){
+  const g=new THREE.Group();
+  const col=0x6cb53f;
+  [[-0.13,-0.16],[0.13,-0.16],[-0.13,0.16],[0.13,0.16]].forEach(([x,z])=>{
+    const l=box(0.17,0.3,0.17,col); l.position.set(x,0.15,z); g.add(l);
+  });
+  const body=box(0.5,0.85,0.3,col); body.position.y=0.72; g.add(body);
+  const sk=new THREE.MeshLambertMaterial({color:col});
+  const faceMat=new THREE.MeshLambertMaterial({map:creeperFaceTexture()});
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5),[sk,sk,sk,sk,sk,faceMat]);
+  head.position.y=1.4; g.add(head);
+  return g;
+}
+function grayOut(group){
+  group.traverse(n=>{ if(n.isMesh){ n.material=n.material.clone();
+    if(n.material.color) n.material.color.set(0x9a9a9a);
+    n.material.map=null; n.material.transparent=true; n.material.opacity=.6; n.material.needsUpdate=true; }});
+}
+function buildMob(o, done){
+  let g;
+  if(o.kind==='teacher')      g=buildVillager(0x7a5a34,0xb78b6b,0x9c7559);
+  else if(o.kind==='reviewer')g=buildVillager(0xdfe3e6,0xb78b6b,0x9c7559); // bibliotecario
+  else if(o.kind==='shop')    g=buildVillager(0x39414a,0xb78b6b,0x9c7559); // herrero
+  else if(o.kind==='enemies') g=buildSlime();
+  else if(o.kind==='boss'){   g=buildCreeper(); g.scale.setScalar(1.45); }
+  else                        g=buildVillager(0x7a5a34,0xb78b6b,0x9c7559);
+  g.position.set(o.x,0,o.y);
+  // mirar "hacia adentro" del mapa (su cara está en -Z)
+  g.rotation.y = (o.y < ROWS/2) ? Math.PI : 0;
+  if(done) grayOut(g);
+  return g;
+}
+
 function buildObjects(){
   OBJECTS.forEach(o=>{
     const done = (o.kind==='boss'&&state.bossDefeated[island().id]) || (o.kind==='enemies'&&isCleared(o));
-    const face = (o.kind==='boss'&&state.bossDefeated[island().id]&&o.face2)?o.face2 : o.face;
-    const spMat=new THREE.SpriteMaterial({map:emojiTexture(face),transparent:true,
-      depthWrite:false});
-    const sp=new THREE.Sprite(spMat);
-    const big = (o.kind==='boss');
-    sp.scale.set(big?1.7:1.3, big?1.7:1.3, 1);
-    sp.position.set(o.x, big?1.1:0.95, o.y);
-    sp.userData={objId:o.id, base:sp.position.y};
-    if(done){ sp.material.color.set(0x9a9a9a); sp.material.opacity=.6; }
-    objGroup.add(sp); objMeshes[o.id]=sp;
-
-    // pedestal bajo cada NPC para que "pise" el suelo
-    const ped=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.4,0.18,12),
-      new THREE.MeshLambertMaterial({color:done?PAL.rock:cssColor('--wood2')}));
-    ped.position.set(o.x,0.09,o.y);
-    objGroup.add(ped);
+    const g=buildMob(o, done);
+    g.userData.objId=o.id; g.userData.kind=g.userData.kind||o.kind;
+    objGroup.add(g); objMeshes[o.id]=g;
   });
 }
 
+/* al despejar/derrotar: el mob se vuelve gris (face se ignora; ya no hay emojis) */
 function setObjCleared(o, face){
-  const sp=objMeshes[o.id]; if(!sp) return;
-  if(face) setSpriteFace(sp,face);
-  sp.material.color.set(0x9a9a9a); sp.material.opacity=.6;
+  const g=objMeshes[o.id]; if(g) grayOut(g);
 }
 
 /* ---------- cámara / mirada ---------- */
@@ -1044,10 +1100,18 @@ function animate(){
     }
   }
 
-  // animaciones suaves: agua y flotación de sprites
+  // animaciones suaves: agua e idle de los mobs (slime rebota, resto leve)
   const t=clock.elapsedTime;
   for(const m of waterMeshes) m.position.y = m.userData.base + Math.sin(t*1.5+m.userData.ph)*0.04;
-  for(const id in objMeshes){ const sp=objMeshes[id]; sp.position.y = sp.userData.base + Math.sin(t*1.6+sp.position.x)*0.06; }
+  for(const id in objMeshes){
+    const g=objMeshes[id];
+    if(g.userData.kind==='slime' && g.userData.cube){
+      const s=1+Math.sin(t*3+g.position.x)*0.14;
+      g.userData.cube.scale.set(1/Math.sqrt(s), s, 1/Math.sqrt(s));
+    }else{
+      g.position.y = Math.sin(t*1.4+g.position.x)*0.02;
+    }
+  }
 
   // anillo pulsante bajo el objetivo cercano
   if(ringMesh.visible){

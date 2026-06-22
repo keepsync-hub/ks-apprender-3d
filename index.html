@@ -531,9 +531,16 @@ const CAM_DIST=4.0, CAM_HEIGHT=2.0, CAM_LOOK=1.15, CAM_SHOULDER=0.55;
 const input={f:false,b:false,l:false,r:false};
 
 /* paleta a partir de las variables CSS */
+/* lee un color del CSS resolviendo var() anidados (p.ej. --grass:var(--minecraft-grass))
+   pintando una sonda oculta y leyendo su color ya computado en rgb(). */
+let _cssProbe=null;
 function cssColor(name){
-  const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return new THREE.Color(v||'#888');
+  if(!_cssProbe){ _cssProbe=document.createElement('span'); _cssProbe.style.display='none';
+    document.body.appendChild(_cssProbe); }
+  _cssProbe.style.color='#888888';
+  _cssProbe.style.color='var('+name+')';
+  const rgb=getComputedStyle(_cssProbe).color;
+  return new THREE.Color(rgb||'#888888');
 }
 const PAL={};
 function loadPalette(){

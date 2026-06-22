@@ -23,8 +23,13 @@ El progreso se guarda solo en `localStorage`.
 
 - Render 3D con [Three.js](https://threejs.org/) (cargado por CDN).
 - Mundo voxel construido a partir de la rejilla de tiles de cada isla
-  (agua, césped, arena, camino, nieve). Los personajes son *sprites* con
-  emojis que siempre miran a la cámara.
+  (agua, césped, arena, camino, nieve). Los aldeanos/jefes son *sprites*
+  con emojis que siempre miran a la cámara.
+- **Estética Minecraft**: bloques de pasto/tierra con texturas pixeladas
+  generadas en `<canvas>` (verde arriba, tierra a los lados), un personaje
+  cúbico tipo **Steve** en tercera persona con animación de caminado, y
+  **animales** (mobs cúbicos) que deambulan por el bioma. Todo procedural,
+  sin assets externos.
 
 ## Añadir contenido (mismo modelo data-driven que la 2D)
 

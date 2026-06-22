@@ -265,7 +265,7 @@
   <div id="worldWrap">
     <div id="world"></div>
     <div id="crosshair"></div>
-    <div id="lookHint">Arrastra para mirar · ▲▼ avanzar · ◀▶ girar</div>
+    <div id="lookHint">Arrastra para orbitar · ▲▼ caminar · ◀▶ girar</div>
   </div>
 
   <div id="controls">
@@ -518,12 +518,15 @@ const worldEl=document.getElementById('world');
 let renderer, scene, camera, clock;
 let terrainGroup, objGroup, ringMesh, waterMeshes=[];
 const objMeshes={};          // objId -> THREE.Sprite
-const EYE=1.45;              // altura de los ojos sobre el suelo
 const MOVE_SPEED=2.6;        // unidades/seg
 const TURN_SPEED=1.9;        // rad/seg
-let yaw=0, pitch=0;          // orientación de la cámara
+let yaw=0, pitch=0.34;       // yaw = hacia dónde mira el personaje; pitch = elevación de cámara
 let pcx=0, pcz=0;            // posición continua del jugador (x, z)
 let nearestId=null;          // objeto interactuable más cercano (cache)
+let player=null, walkPhase=0;// avatar 3D (tercera persona) y fase de caminado
+let GRAD=null;               // mapa de degradado para sombreado toon (anime)
+/* cámara en tercera persona "sobre el hombro" (como la referencia anime) */
+const CAM_DIST=4.0, CAM_HEIGHT=2.0, CAM_LOOK=1.15, CAM_SHOULDER=0.55;
 
 const input={f:false,b:false,l:false,r:false};
 
@@ -558,16 +561,46 @@ function setSpriteFace(sprite, ch){
   sprite.material.needsUpdate=true;
 }
 
+/* ---- sombreado "toon"/cel-shading (look anime) ---- */
+function toonGradientTexture(){
+  // rampa de pocos escalones -> bandas de luz/sombra propias del anime
+  const c=document.createElement('canvas'); c.width=5; c.height=1;
+  const g=c.getContext('2d');
+  ['#5b5b66','#8f8f9a','#bcbcc4','#e6e6ea','#ffffff'].forEach((col,i)=>{ g.fillStyle=col; g.fillRect(i,0,1,1); });
+  const t=new THREE.CanvasTexture(c);
+  t.minFilter=t.magFilter=THREE.NearestFilter;
+  return t;
+}
+function toonMat(color){ return new THREE.MeshToonMaterial({color:color, gradientMap:GRAD}); }
+/* pieza del personaje = malla toon + contorno negro (back-face escalado) */
+function part(geo,color){
+  const m=new THREE.Mesh(geo, toonMat(color));
+  const o=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x1c1c22, side:THREE.BackSide}));
+  o.scale.setScalar(1.08);
+  m.add(o);
+  return m;
+}
+/* extremidad que pivota en su extremo superior (para la animación de caminado) */
+function makeLimb(geo,color,pivotY,halfOffset){
+  const g=new THREE.Group(); g.position.y=pivotY;
+  const m=part(geo,color); m.position.y=halfOffset; g.add(m);
+  return g;
+}
+
 function setupThree(){
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   worldEl.appendChild(renderer.domElement);
   scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(72,1,0.1,200);
+  camera=new THREE.PerspectiveCamera(60,1,0.1,200);
   clock=new THREE.Clock();
+  GRAD=toonGradientTexture();
 
-  const hemi=new THREE.HemisphereLight(0xffffff,0x404048,1.0); scene.add(hemi);
-  const sun=new THREE.DirectionalLight(0xffffff,0.7);
+  // en tercera persona ocultamos la mira de primera persona
+  const ch=document.getElementById('crosshair'); if(ch) ch.style.display='none';
+
+  const hemi=new THREE.HemisphereLight(0xffffff,0x46474f,0.95); scene.add(hemi);
+  const sun=new THREE.DirectionalLight(0xffffff,0.95);
   sun.position.set(6,12,4); scene.add(sun);
 
   terrainGroup=new THREE.Group(); scene.add(terrainGroup);
@@ -610,11 +643,11 @@ function buildWorld(){
 
   const cube=new THREE.BoxGeometry(1,1,1);
   const mat={
-    G:new THREE.MeshLambertMaterial({color:PAL.G}),
-    S:new THREE.MeshLambertMaterial({color:PAL.S}),
-    P:new THREE.MeshLambertMaterial({color:PAL.P}),
-    N:new THREE.MeshLambertMaterial({color:PAL.N}),
-    W:new THREE.MeshLambertMaterial({color:PAL.W,transparent:true,opacity:.85})
+    G:toonMat(PAL.G),
+    S:toonMat(PAL.S),
+    P:toonMat(PAL.P),
+    N:toonMat(PAL.N),
+    W:new THREE.MeshToonMaterial({color:PAL.W,gradientMap:GRAD,transparent:true,opacity:.85})
   };
 
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
@@ -645,9 +678,60 @@ function buildWorld(){
   pcx = (typeof state.px==='number')? state.px : island().spawn.x;
   pcz = (typeof state.py==='number')? state.py : island().spawn.y;
   if(!walkable(Math.round(pcx),Math.round(pcz))){ pcx=island().spawn.x; pcz=island().spawn.y; }
-  yaw = state.yaw||0; pitch=0;
+  yaw = state.yaw||0; pitch=0.34;
   nearestId=null;
+  buildPlayer();
   updateCamera();
+}
+
+/* avatar 3D estilo anime (cel-shaded), visto en tercera persona */
+function buildPlayer(){
+  if(player) scene.remove(player);
+  player=new THREE.Group();
+  const skin=0xf0c9a8, hair=0x20202a, shirt=0xf4f4f0, dark=0x2b2b33,
+        shoe=0x2f7d52, red=0xc0392b, strap=0xb59a6e;
+
+  // ----- piernas (pivotan en la cadera) -----
+  const legGeo=new THREE.CylinderGeometry(0.085,0.07,0.5,8);
+  const ll=makeLimb(legGeo,skin,0.55,-0.25);
+  const rl=makeLimb(legGeo,skin,0.55,-0.25);
+  ll.position.x=-0.12; rl.position.x=0.12;
+  const shoe1=part(new THREE.BoxGeometry(0.14,0.1,0.24),shoe); shoe1.position.set(0,-0.5,0.04);
+  const shoe2=part(new THREE.BoxGeometry(0.14,0.1,0.24),shoe); shoe2.position.set(0,-0.5,0.04);
+  ll.add(shoe1); rl.add(shoe2);
+  player.add(ll,rl);
+
+  // ----- falda -----
+  const skirt=part(new THREE.CylinderGeometry(0.2,0.34,0.34,12),dark);
+  skirt.position.y=0.68; player.add(skirt);
+
+  // ----- torso (camisa) -----
+  const torso=part(new THREE.CylinderGeometry(0.19,0.22,0.46,12),shirt);
+  torso.position.y=1.05; player.add(torso);
+
+  // ----- brazos (pivotan en el hombro) -----
+  const armGeo=new THREE.CylinderGeometry(0.06,0.055,0.46,8);
+  const la=makeLimb(armGeo,shirt,1.2,-0.23); la.position.x=-0.255;
+  const ra=makeLimb(armGeo,shirt,1.2,-0.23); ra.position.x=0.255;
+  player.add(la,ra);
+
+  // ----- cabeza + pelo estilo bob -----
+  const head=part(new THREE.SphereGeometry(0.17,16,14),skin); head.position.y=1.5;
+  const hairTop=part(new THREE.SphereGeometry(0.195,16,14),hair);
+  hairTop.position.set(0,1.53,0); hairTop.scale.set(1,1,1.04);
+  const hairBack=part(new THREE.SphereGeometry(0.165,12,12),hair);
+  hairBack.position.set(0,1.44,0.07); hairBack.scale.set(1.08,1.18,1);
+  player.add(head,hairTop,hairBack);
+
+  // ----- bolso rojo cruzado en la espalda (+Z = espalda; el frente mira a -Z) -----
+  const bag=part(new THREE.BoxGeometry(0.3,0.32,0.14),red); bag.position.set(0,1.02,0.2);
+  const st=part(new THREE.BoxGeometry(0.05,0.5,0.05),strap); st.position.set(-0.16,1.2,0.02); st.rotation.z=0.35;
+  player.add(bag,st);
+
+  player.userData={ll,rl,la,ra};
+  player.position.set(pcx,0,pcz);
+  player.rotation.y=-yaw;
+  scene.add(player);
 }
 
 /* arbolito/arbusto decorativo simple */
@@ -655,15 +739,15 @@ function addDecor(x,y){
   const forest=island().id==='bosque';
   if(forest){
     const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.5,6),
-      new THREE.MeshLambertMaterial({color:cssColor('--wood2')}));
+      toonMat(cssColor('--wood2')));
     trunk.position.set(x,0.25,y);
     const leaves=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.7,7),
-      new THREE.MeshLambertMaterial({color:cssColor('--grass2')}));
+      toonMat(cssColor('--grass2')));
     leaves.position.set(x,0.75,y);
     terrainGroup.add(trunk); terrainGroup.add(leaves);
   }else{
     const bush=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,6),
-      new THREE.MeshLambertMaterial({color:cssColor('--grass2')}));
+      toonMat(cssColor('--grass2')));
     bush.position.set(x,0.2,y); terrainGroup.add(bush);
   }
 }
@@ -697,17 +781,18 @@ function setObjCleared(o, face){
 }
 
 /* ---------- cámara / mirada ---------- */
-function dirVector(){
-  return {
-    x:Math.cos(pitch)*Math.sin(yaw),
-    y:Math.sin(pitch),
-    z:-Math.cos(pitch)*Math.cos(yaw)
-  };
-}
 function updateCamera(){
-  camera.position.set(pcx,EYE,pcz);
-  const d=dirVector();
-  camera.lookAt(pcx+d.x, EYE+d.y, pcz+d.z);
+  // tercera persona "sobre el hombro": la cámara va detrás y un poco a la
+  // derecha del personaje, mirando hacia su espalda (como la referencia).
+  const fx=Math.sin(yaw), fz=-Math.cos(yaw);   // hacia donde mira el personaje
+  const rx=Math.cos(yaw), rz=Math.sin(yaw);    // su derecha
+  const hd=CAM_DIST*Math.cos(pitch);           // distancia horizontal
+  const vd=CAM_DIST*Math.sin(pitch);           // altura por elevación
+  const cx=pcx - fx*hd + rx*CAM_SHOULDER;
+  const cz=pcz - fz*hd + rz*CAM_SHOULDER;
+  const cy=CAM_HEIGHT + vd;
+  camera.position.set(cx, cy, cz);
+  camera.lookAt(pcx + rx*CAM_SHOULDER*0.4, CAM_LOOK, pcz + rz*CAM_SHOULDER*0.4);
 }
 function initLookControls(){
   const el=renderer.domElement;
@@ -716,8 +801,8 @@ function initLookControls(){
   const moveLook=(x,y)=>{
     if(!dragging) return;
     const dx=x-lx, dy=y-ly; lx=x; ly=y;
-    yaw += dx*0.005;
-    pitch = Math.max(-0.6, Math.min(0.55, pitch - dy*0.005));
+    yaw += dx*0.005;                                   // orbitar/girar al personaje
+    pitch = Math.max(0.08, Math.min(0.9, pitch - dy*0.005)); // elevar/bajar la cámara
   };
   const end=()=>{dragging=false; state.yaw=yaw; saveState();};
   el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId); start(e.clientX,e.clientY);});
@@ -751,6 +836,7 @@ function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.05);
   const overlayShown=overlay.classList.contains('show');
+  let moving=false;
 
   if(!overlayShown){
     // giro
@@ -764,8 +850,8 @@ function animate(){
       const fx=Math.sin(yaw), fz=-Math.cos(yaw);
       const nx=pcx + fx*MOVE_SPEED*dt*mv;
       const nz=pcz + fz*MOVE_SPEED*dt*mv;
-      if(canStand(nx,pcz)) pcx=nx;
-      if(canStand(pcx,nz)) pcz=nz;
+      if(canStand(nx,pcz)){ pcx=nx; moving=true; }
+      if(canStand(pcx,nz)){ pcz=nz; moving=true; }
     }
     updateCamera();
 
@@ -775,6 +861,20 @@ function animate(){
 
     // objeto interactuable más cercano
     updateNearest();
+  }
+
+  // ---- avatar: orientación, caminado y leve balanceo ----
+  if(player){
+    player.position.x=pcx; player.position.z=pcz;
+    player.rotation.y=-yaw;
+    const u=player.userData;
+    if(moving) walkPhase += dt*9; else walkPhase *= 0.82;
+    const sw=Math.sin(walkPhase)*0.5;
+    if(u.ll){
+      u.ll.rotation.x= sw;   u.rl.rotation.x=-sw;
+      u.la.rotation.x=-sw*0.7; u.ra.rotation.x= sw*0.7;
+      player.position.y = Math.abs(Math.sin(walkPhase))*0.05*(moving?1:0);
+    }
   }
 
   // animaciones suaves: agua y flotación de sprites
@@ -1469,11 +1569,11 @@ const NPC_LEGEND=`<div class="bubble" style="margin-top:10px;font-size:13px">
 function intro(){
   openPanel(`<h2 class="pixel" style="font-size:12px">APRENDER JUGANDO · 3D</h2>
     <div class="speaker"><div class="face">🏝️</div>
-    <div class="bubble">Explora la <b>${island().name}</b> ahora <b>en primera persona</b>. Para liberarla:
+    <div class="bubble">Explora la <b>${island().name}</b> ahora <b>en 3D, en tercera persona</b> (sigues a tu personaje). Para liberarla:
     <br>1️⃣ Habla con los aldeanos: te dan <b>pistas</b>, no respuestas. Tú deduces la palabra.
     <br>2️⃣ Cada palabra aprendida es <b>moneda y fuerza</b>.
     <br>3️⃣ Despeja enemigos, compra equipo y vence al <b>jefe</b> para abrir la siguiente isla.
-    <br><br>🕹️ <b>Recorre el mapa en 3D:</b> ▲▼ (o W/S) para avanzar y retroceder, ◀▶ (o A/D) para girar, y <b>arrastra</b> sobre el mundo para mirar alrededor. Acércate a alguien y pulsa <b>E</b> (o el botón dorado) para interactuar.
+    <br><br>🕹️ <b>Recorre el mapa en 3D:</b> ▲▼ (o W/S) para caminar y retroceder, ◀▶ (o A/D) para girar, y <b>arrastra</b> sobre el mundo para orbitar la cámara. Acércate a alguien y pulsa <b>E</b> (o el botón dorado) para interactuar.
     <br>En los retos puedes pulsar <b>1–4</b> para responder y <b>Enter</b> para continuar.</div></div>
     ${NPC_LEGEND}
     <div class="panel-actions"><button class="btn gold" onclick="closePanel()">¡Empezar!</button></div>`);

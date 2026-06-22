@@ -533,7 +533,8 @@ function islandProgress(){
    ====================================================================== */
 const worldEl=document.getElementById('world');
 let renderer, scene, camera, clock;
-let terrainGroup, objGroup, ringMesh, waterMeshes=[];
+let terrainGroup, objGroup, animalGroup, ringMesh, waterMeshes=[];
+const animals=[];            // mobs cúbicos que deambulan por el bioma
 const objMeshes={};          // objId -> THREE.Sprite
 const MOVE_SPEED=2.6;        // unidades/seg
 const TURN_SPEED=1.9;        // rad/seg
@@ -611,6 +612,89 @@ function makeLimb(geo,color,pivotY,halfOffset){
   return g;
 }
 
+/* ====================================================================
+   ESTÉTICA MINECRAFT: texturas pixeladas, personaje "Steve" y animales
+   Todo se genera en <canvas> (sin assets externos) y se filtra con
+   NearestFilter para conservar el aspecto de píxel.
+   ==================================================================== */
+function pixelTexture(size, drawFn){
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  drawFn(c.getContext('2d'), size);
+  const t=new THREE.CanvasTexture(c);
+  t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  return t;
+}
+/* relleno tipo "ruido" en una rejilla de celdas (bloques Minecraft) */
+function noiseTex(shades, cells){
+  cells=cells||8;
+  return pixelTexture(16,(g,s)=>{
+    const cs=s/cells;
+    for(let i=0;i<cells;i++)for(let j=0;j<cells;j++){
+      g.fillStyle=shades[(Math.random()*shades.length)|0];
+      g.fillRect(i*cs,j*cs,Math.ceil(cs),Math.ceil(cs));
+    }
+  });
+}
+const MC={
+  dirt :['#8b6d4a','#7a5d3e','#96764f','#6e5236','#82613f'],
+  grass:['#7cb342','#6fa030','#84bd49','#69992e','#76ad3c'],
+  sand :['#e6cf8f','#ddc47f','#ecd79a','#d8bd74'],
+  snow :['#eef4fb','#ffffff','#d3deea','#e3ecf6'],
+  path :['#b0814e','#9a6f40','#a87a48','#8d6238'],
+  stone:['#8a8d91','#7f8287','#969a9f','#74777b']
+};
+let TEX=null;
+function buildTextures(){
+  if(TEX) return;
+  // cara lateral del pasto: tierra con franja verde irregular arriba
+  const grassSide=pixelTexture(16,(g,s)=>{
+    const cs=s/8;
+    for(let i=0;i<8;i++)for(let j=0;j<8;j++){ g.fillStyle=MC.dirt[(Math.random()*MC.dirt.length)|0]; g.fillRect(i*cs,j*cs,cs+1,cs+1); }
+    for(let i=0;i<8;i++){
+      for(let j=0;j<3;j++){ g.fillStyle=MC.grass[(Math.random()*MC.grass.length)|0]; g.fillRect(i*cs,j*cs,cs+1,cs+1); }
+      if(Math.random()<0.5){ g.fillStyle=MC.grass[(Math.random()*MC.grass.length)|0]; g.fillRect(i*cs,3*cs,cs+1,cs+1); }
+    }
+  });
+  const lam=(map)=>new THREE.MeshLambertMaterial({map});
+  const grassTop=lam(noiseTex(MC.grass)), dirt=lam(noiseTex(MC.dirt)),
+        side=lam(grassSide), sand=lam(noiseTex(MC.sand)),
+        snow=lam(noiseTex(MC.snow)), path=lam(noiseTex(MC.path));
+  // orden de caras de BoxGeometry: [+x,-x,+y(top),-y(bottom),+z,-z]
+  TEX={
+    G:[side,side,grassTop,dirt,side,side],
+    S:lam(noiseTex(MC.sand)),
+    P:lam(noiseTex(MC.path)),
+    N:lam(noiseTex(MC.snow)),
+    grassTop, dirt, side, sand, snow, path
+  };
+}
+
+/* malla simple texturizada/colored para piezas cúbicas */
+function box(w,h,d,colorOrMat){
+  const mat=(colorOrMat instanceof THREE.Material)?colorOrMat:new THREE.MeshLambertMaterial({color:colorOrMat});
+  return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+}
+/* extremidad cúbica que pivota arriba (brazos/piernas de Steve y patas de animales) */
+function boxLimb(w,h,d,colorOrMat,px,pz,topY){
+  const g=new THREE.Group(); g.position.set(px,topY,pz);
+  const m=box(w,h,d,colorOrMat); m.position.y=-h/2; g.add(m);
+  return g;
+}
+
+/* cara de Steve (8x8) para el frente de la cabeza */
+function steveFaceTexture(){
+  return pixelTexture(8,(g)=>{
+    g.fillStyle='#a9805a'; g.fillRect(0,0,8,8);            // piel
+    g.fillStyle='#6b4a2f'; g.fillRect(0,0,8,2);            // flequillo
+    g.fillStyle='#ffffff'; g.fillRect(1,3,2,1); g.fillRect(5,3,2,1); // ojos (blanco)
+    g.fillStyle='#3b3bb3'; g.fillRect(2,3,1,1); g.fillRect(5,3,1,1); // pupilas
+    g.fillStyle='#7a5a3a'; g.fillRect(3,5,2,1);            // boca/bigote
+  });
+}
+
+/* colores oficiales aproximados de Steve */
+const STEVE={skin:0xa9805a, hair:0x4a3621, shirt:0x27a3a3, arm:0xa9805a, pants:0x3b3bb3, shoe:0x4a4a4a};
+
 function setupThree(){
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
@@ -619,6 +703,7 @@ function setupThree(){
   camera=new THREE.PerspectiveCamera(60,1,0.1,200);
   clock=new THREE.Clock();
   GRAD=toonGradientTexture();
+  buildTextures();
 
   // en tercera persona ocultamos la mira de primera persona
   const ch=document.getElementById('crosshair'); if(ch) ch.style.display='none';
@@ -629,6 +714,7 @@ function setupThree(){
 
   terrainGroup=new THREE.Group(); scene.add(terrainGroup);
   objGroup=new THREE.Group();     scene.add(objGroup);
+  animalGroup=new THREE.Group();  scene.add(animalGroup);
 
   // anillo dorado bajo el objeto interactuable cercano
   const ringGeo=new THREE.TorusGeometry(0.45,0.07,10,28);
@@ -655,8 +741,8 @@ function buildWorld(){
   scene.background = (isFoggy? cssColor('--sea2') : cssColor('--sea')).clone();
   scene.fog = new THREE.Fog(scene.background.getHex(), isFoggy?5:9, isFoggy?16:26);
 
-  clearGroup(terrainGroup); clearGroup(objGroup);
-  waterMeshes.length=0; for(const k in objMeshes) delete objMeshes[k];
+  clearGroup(terrainGroup); clearGroup(objGroup); clearGroup(animalGroup);
+  waterMeshes.length=0; animals.length=0; for(const k in objMeshes) delete objMeshes[k];
 
   // mar de fondo (gran plano) bajo todo el mapa
   const seaGeo=new THREE.PlaneGeometry(120,120);
@@ -666,28 +752,22 @@ function buildWorld(){
   terrainGroup.add(seaPlane);
 
   const cube=new THREE.BoxGeometry(1,1,1);
-  const mat={
-    G:toonMat(PAL.G),
-    S:toonMat(PAL.S),
-    P:toonMat(PAL.P),
-    N:toonMat(PAL.N),
-    W:new THREE.MeshToonMaterial({color:PAL.W,gradientMap:GRAD,transparent:true,opacity:.85})
-  };
+  const waterMat=new THREE.MeshLambertMaterial({color:PAL.W,transparent:true,opacity:.82});
 
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
     const t=MAP[y][x];
     if(t==='W'){
       // bloque de agua, más bajo, ligeramente animado
-      const m=new THREE.Mesh(cube,mat.W);
+      const m=new THREE.Mesh(cube,waterMat);
       m.scale.set(1,0.7,1);
       m.position.set(x,-0.35,y);
       m.userData.base=-0.35; m.userData.ph=(x+y)*0.6;
       terrainGroup.add(m); waterMeshes.push(m);
     }else{
-      // bloque de tierra: altura variable, con su cara superior fijada en y=0
-      // (centro en -h/2 para que el jugador camine siempre sobre y≈0)
+      // bloque de tierra texturizado (pasto/tierra estilo Minecraft).
+      // Cara superior fijada en y=0 (centro en -h/2) para caminar sobre y≈0.
       const h = t==='N'?1.15 : t==='S'?0.95 : 1;
-      const m=new THREE.Mesh(cube,mat[t]||mat.G);
+      const m=new THREE.Mesh(cube, TEX[t]||TEX.G);  // TEX.G es un array de 6 caras
       m.scale.set(1,h,1);
       m.position.set(x,-h/2,y);
       terrainGroup.add(m);
@@ -697,6 +777,7 @@ function buildWorld(){
   }
 
   buildObjects();
+  buildAnimals();
 
   // posición/orientación inicial del jugador
   pcx = (typeof state.px==='number')? state.px : island().spawn.x;
@@ -708,54 +789,114 @@ function buildWorld(){
   updateCamera();
 }
 
-/* avatar 3D estilo anime (cel-shaded), visto en tercera persona */
+/* avatar "Steve" de Minecraft (cúbico), visto en tercera persona.
+   Proporciones tipo Minecraft: cabeza 0.5, torso 0.5x0.75x0.25,
+   brazos/piernas 0.25x0.75x0.25. Pies en y=0; el frente mira a -Z. */
 function buildPlayer(){
   if(player) scene.remove(player);
   player=new THREE.Group();
-  const skin=0xf0c9a8, hair=0x20202a, shirt=0xf4f4f0, dark=0x2b2b33,
-        shoe=0x2f7d52, red=0xc0392b, strap=0xb59a6e;
+  const S=STEVE;
 
-  // ----- piernas (pivotan en la cadera) -----
-  const legGeo=new THREE.CylinderGeometry(0.085,0.07,0.5,8);
-  const ll=makeLimb(legGeo,skin,0.55,-0.25);
-  const rl=makeLimb(legGeo,skin,0.55,-0.25);
-  ll.position.x=-0.12; rl.position.x=0.12;
-  const shoe1=part(new THREE.BoxGeometry(0.14,0.1,0.24),shoe); shoe1.position.set(0,-0.5,0.04);
-  const shoe2=part(new THREE.BoxGeometry(0.14,0.1,0.24),shoe); shoe2.position.set(0,-0.5,0.04);
-  ll.add(shoe1); rl.add(shoe2);
+  // ----- piernas (pivotan en la cadera y=0.75) -----
+  const ll=boxLimb(0.25,0.75,0.25,S.pants,-0.13,0,0.75);
+  const rl=boxLimb(0.25,0.75,0.25,S.pants, 0.13,0,0.75);
+  // zapatos
+  const shoeL=box(0.26,0.08,0.27,S.shoe); shoeL.position.y=-0.71; ll.add(shoeL);
+  const shoeR=box(0.26,0.08,0.27,S.shoe); shoeR.position.y=-0.71; rl.add(shoeR);
   player.add(ll,rl);
 
-  // ----- falda -----
-  const skirt=part(new THREE.CylinderGeometry(0.2,0.34,0.34,12),dark);
-  skirt.position.y=0.68; player.add(skirt);
+  // ----- torso (camiseta cian) -----
+  const torso=box(0.5,0.75,0.25,S.shirt); torso.position.y=1.125; player.add(torso);
 
-  // ----- torso (camisa) -----
-  const torso=part(new THREE.CylinderGeometry(0.19,0.22,0.46,12),shirt);
-  torso.position.y=1.05; player.add(torso);
+  // ----- brazos (pivotan en el hombro y=1.5); manga cian + antebrazo piel -----
+  function arm(side){
+    const g=new THREE.Group(); g.position.set(side*0.375,1.5,0);
+    const sleeve=box(0.25,0.28,0.25,S.shirt); sleeve.position.y=-0.14; g.add(sleeve);
+    const fore=box(0.25,0.47,0.25,S.arm);     fore.position.y=-0.515; g.add(fore);
+    return g;
+  }
+  const la=arm(-1), ra=arm(1); player.add(la,ra);
 
-  // ----- brazos (pivotan en el hombro) -----
-  const armGeo=new THREE.CylinderGeometry(0.06,0.055,0.46,8);
-  const la=makeLimb(armGeo,shirt,1.2,-0.23); la.position.x=-0.255;
-  const ra=makeLimb(armGeo,shirt,1.2,-0.23); ra.position.x=0.255;
-  player.add(la,ra);
+  // ----- cabeza (cara al frente -Z) + pelo -----
+  const faceMat=new THREE.MeshLambertMaterial({map:steveFaceTexture()});
+  const skinMat=new THREE.MeshLambertMaterial({color:S.skin});
+  // caras: [+x,-x,+y,-y,+z,-z]  -> la cara va en -z (frente)
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5),
+    [skinMat,skinMat,skinMat,skinMat,skinMat,faceMat]);
+  head.position.y=1.75; player.add(head);
+  // pelo: casquete que cubre parte superior, lados y nuca
+  const hairMat=new THREE.MeshLambertMaterial({color:S.hair});
+  const cap=new THREE.Mesh(new THREE.BoxGeometry(0.54,0.2,0.54),hairMat); cap.position.y=1.95;
+  const nape=new THREE.Mesh(new THREE.BoxGeometry(0.54,0.34,0.16),hairMat); nape.position.set(0,1.74,0.21);
+  player.add(cap,nape);
 
-  // ----- cabeza + pelo estilo bob -----
-  const head=part(new THREE.SphereGeometry(0.17,16,14),skin); head.position.y=1.5;
-  const hairTop=part(new THREE.SphereGeometry(0.195,16,14),hair);
-  hairTop.position.set(0,1.53,0); hairTop.scale.set(1,1,1.04);
-  const hairBack=part(new THREE.SphereGeometry(0.165,12,12),hair);
-  hairBack.position.set(0,1.44,0.07); hairBack.scale.set(1.08,1.18,1);
-  player.add(head,hairTop,hairBack);
-
-  // ----- bolso rojo cruzado en la espalda (+Z = espalda; el frente mira a -Z) -----
-  const bag=part(new THREE.BoxGeometry(0.3,0.32,0.14),red); bag.position.set(0,1.02,0.2);
-  const st=part(new THREE.BoxGeometry(0.05,0.5,0.05),strap); st.position.set(-0.16,1.2,0.02); st.rotation.z=0.35;
-  player.add(bag,st);
-
+  // userData con miembros que se animan al caminar
   player.userData={ll,rl,la,ra};
   player.position.set(pcx,0,pcz);
   player.rotation.y=-yaw;
   scene.add(player);
+}
+
+/* ---------- Animales del bioma (mobs cúbicos que deambulan) ---------- */
+const ANIMAL_TYPES=[
+  {name:'vaca',   body:0x5a4632, head:0x6b5440, legs:0x3a2a1c},
+  {name:'cerdo',  body:0xd98c8c, head:0xe09a9a, legs:0xc77b7b},
+  {name:'oveja',  body:0xe8e8e8, head:0xd8c9b0, legs:0xb8b0a4},
+  {name:'rana',   body:0x6fae46, head:0x6fae46, legs:0x55903a, squat:true},
+  {name:'ave',    body:0xd25a7a, head:0xd25a7a, legs:0xe0b03a, tall:true}
+];
+function makeAnimal(x,y){
+  const ty=ANIMAL_TYPES[(Math.random()*ANIMAL_TYPES.length)|0];
+  const g=new THREE.Group();
+  const legLen = ty.tall?0.42 : ty.squat?0.14 : 0.26;
+  const bw=ty.squat?0.42:0.5, bh=ty.squat?0.22:0.3, bd=ty.squat?0.42:0.3;
+  const bodyY=legLen+bh/2;
+  // 4 patas (índices: FL, FR, BL, BR) que pivotan arriba
+  const legs=[
+    boxLimb(0.1,legLen,0.1,ty.legs,-0.15,-0.1,legLen),
+    boxLimb(0.1,legLen,0.1,ty.legs, 0.15,-0.1,legLen),
+    boxLimb(0.1,legLen,0.1,ty.legs,-0.15, 0.12,legLen),
+    boxLimb(0.1,legLen,0.1,ty.legs, 0.15, 0.12,legLen)
+  ];
+  legs.forEach(l=>g.add(l));
+  const bodyMesh=box(bw,bh,bd,ty.body); bodyMesh.position.y=bodyY; g.add(bodyMesh); // cuerpo
+  const head=box(0.26,0.26,0.26,ty.head);
+  head.position.set(0, bodyY+(ty.tall?0.18:0.06), -(bd/2+0.1)); g.add(head);
+  if(ty.name==='ave'){ const beak=box(0.06,0.06,0.14,0xe0b03a); beak.position.set(0,bodyY+0.16,-(bd/2+0.22)); g.add(beak); }
+  g.position.set(x,0,y);
+  animalGroup.add(g);
+  return {group:g, legs, x, z:y, heading:Math.random()*6.28,
+          timer:Math.random()*2, moving:true, phase:0, speed:0.6+Math.random()*0.5};
+}
+function buildAnimals(){
+  const n = island().id==='bosque'?6:4;
+  let tries=0;
+  while(animals.length<n && tries<300){
+    tries++;
+    const x=1+Math.floor(Math.random()*(COLS-2));
+    const y=1+Math.floor(Math.random()*(ROWS-2));
+    if(!walkable(x,y) || objAt(x,y)) continue;
+    if(Math.abs(x-island().spawn.x)+Math.abs(y-island().spawn.y)<2) continue;
+    animals.push(makeAnimal(x,y));
+  }
+}
+function updateAnimals(dt){
+  for(const a of animals){
+    a.timer-=dt;
+    if(a.timer<=0){ a.heading=Math.random()*6.283; a.timer=1.5+Math.random()*2.5; a.moving=Math.random()<0.75; }
+    if(a.moving){
+      const nx=a.x+Math.sin(a.heading)*a.speed*dt;
+      const nz=a.z-Math.cos(a.heading)*a.speed*dt;
+      if(walkable(Math.round(nx),Math.round(nz)) && !objAt(Math.round(nx),Math.round(nz))){ a.x=nx; a.z=nz; }
+      else { a.heading+=2.3; }
+      a.phase+=dt*8;
+    } else a.phase*=0.85;
+    a.group.position.set(a.x,0,a.z);
+    a.group.rotation.y=-a.heading;
+    const sw=Math.sin(a.phase)*0.5;
+    a.legs[0].rotation.x= sw; a.legs[3].rotation.x= sw;   // diagonal
+    a.legs[1].rotation.x=-sw; a.legs[2].rotation.x=-sw;
+  }
 }
 
 /* arbolito/arbusto decorativo simple */
@@ -885,6 +1026,8 @@ function animate(){
 
     // objeto interactuable más cercano
     updateNearest();
+    // animales del bioma
+    updateAnimals(dt);
   }
 
   // ---- avatar: orientación, caminado y leve balanceo ----

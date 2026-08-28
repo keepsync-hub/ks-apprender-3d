@@ -268,7 +268,7 @@
     <span class="title pixel">APRENDER JUGANDO 3D</span>
     <span class="stat" title="Vida"><span class="ico">❤️</span><span class="hpbar"><i id="hpFill" style="width:100%"></i></span></span>
     <span class="stat" title="Gemas"><span class="ico">💎</span><span id="gemCount">0</span></span>
-    <span class="stat" title="Palabras aprendidas"><span class="ico">📖</span><span id="wordCount">0</span></span>
+    <span class="stat" title="Aprendizajes"><span class="ico">📖</span><span id="wordCount">0</span></span>
     <span class="stat clickable" id="medalStat" title="Logros desbloqueados"><span class="ico">🏅</span><span id="medalCount">0/0</span></span>
     <span class="island" id="islandName">Isla Niebla</span>
   </div>
@@ -294,7 +294,7 @@
     </div>
     <div class="ctrl-right">
       <button class="btn gold" id="actionBtn" disabled>Acércate a alguien</button>
-      <button class="btn ghost" id="bankBtn">📖 Mis palabras</button>
+      <button class="btn ghost" id="bankBtn">📖 Mi cuaderno</button>
       <button class="btn ghost" id="profileBtn">👤 Perfil</button>
       <button class="btn ghost" id="helpBtn">❓ Ayuda</button>
       <div class="hint-key">Avanzar: ▲▼/W,S · Girar: ◀▶/A,D · Mirar: arrastra · Interactúa: E</div>
@@ -403,9 +403,82 @@ const ISLANDS = [
       {id:'boss',     kind:'boss',     face:'🐲', x:6, y:1, name:'Dragón del Bosque', face2:'🏳️',
        greeting:'¡Solo el conocimiento me hiere! Trae tu espada y muchas palabras si quieres pasar.'}
     ]
+  },
+  {
+    id:'numeros',
+    name:'Isla de los Números',
+    theme:'Matemáticas · 6 a 9 años',
+    subject:'math',
+    floor:'G',
+    /* Retos de mates: q = enunciado, a = respuesta, hint = estrategia (nunca la respuesta).
+       Los enunciados van en ASCII (+ - x :) porque la fuente pixel no tiene glifos para × ÷. */
+    vocab:[
+      {id:'m_sum10', q:'6 + 4',          a:10, hint:'Empieza en el 6 y cuenta 4 dedos más: 7, 8, 9, 10. Llegas justo a la decena.'},
+      {id:'m_sum17', q:'9 + 8',          a:17, hint:'El 9 es casi 10. Haz 10 + 8 = 18 y luego quita 1, porque pusiste uno de más.'},
+      {id:'m_res6',  q:'14 - 8',         a:6,  hint:'Sube desde el 8: de 8 a 10 van 2, y de 10 a 14 van 4. Junta esos dos saltos.'},
+      {id:'m_dob14', q:'el doble de 7',  a:14, hint:'El doble es la misma cantidad dos veces: 7 + 7.'},
+      {id:'m_mit6',  q:'la mitad de 12', a:6,  hint:'Reparte 12 en dos montones iguales. ¿Cuántos quedan en cada montón?'},
+      {id:'m_fal7',  q:'5 + ? = 12',     a:7,  hint:'De 5 a 10 van 5, y de 10 a 12 van 2. Junta esos dos saltos.'},
+      {id:'m_x8',    q:'4 x 2',          a:8,  hint:'Multiplicar por 2 es hacer el doble: 4 + 4.'},
+      {id:'m_x30',   q:'5 x 6',          a:30, hint:'Cuenta de 5 en 5 seis veces: 5, 10, 15, 20, 25, 30.'},
+      {id:'m_x70',   q:'10 x 7',         a:70, hint:'Multiplicar por 10 es fácil: al 7 le añades un cero detrás.'},
+      {id:'m_su38',  q:'25 + 13',        a:38, hint:'Suma primero las decenas (20 + 10 = 30) y después las unidades (5 + 3 = 8).'},
+      {id:'m_re25',  q:'40 - 15',        a:25, hint:'Sube desde el 15: de 15 a 20 van 5, y de 20 a 40 van 20. Junta 5 y 20.'},
+      {id:'m_div4',  q:'12 : 3',         a:4,  hint:'Reparte 12 caramelos entre 3 amigos, uno a uno. ¿Cuántos le tocan a cada uno?'}
+    ],
+    map:[
+      "WWWWWWWWWWWWW",
+      "WWSSSSSSSSSWW",
+      "WSSGGGGGGGSSW",
+      "WSGGGPPPGGGSW",
+      "WSGGGPGGGGGSW",
+      "WSGGPPPPPGGSW",
+      "WSGGGPGGGGGSW",
+      "WSGGGPPPGGGSW",
+      "WWSSGGGGGSSWW",
+      "WWWWWWWWWWWWW"
+    ],
+    spawn:{x:6,y:5},
+    objects:[
+      {id:'teacherE', kind:'teacher', face:'👩‍🏫', x:3, y:3, name:'Maestra Suma',
+       words:['m_sum10','m_sum17','m_res6','m_dob14','m_mit6','m_fal7']},
+      {id:'teacherF', kind:'teacher', face:'🧑‍🔬', x:9, y:6, name:'Profe Múltiplo',
+       words:['m_x8','m_x30','m_x70','m_su38','m_re25','m_div4']},
+      {id:'reviewer', kind:'reviewer', face:'🦫', x:5, y:8, name:'Castor Calculín'},
+      {id:'shop',     kind:'shop',     face:'🧮', x:2, y:5, name:'Tienda del Ábaco'},
+      {id:'enemies',  kind:'enemies',  face:'🔢', x:9, y:3, name:'Cifras traviesas'},
+      {id:'boss',     kind:'boss',     face:'🐉', x:6, y:1, name:'Guardián de los Números', face2:'🏳️',
+       greeting:'¡Solo pasará quien domine los números! Trae tu espada y muchos retos resueltos.'}
+    ]
   }
   /* >>> Para añadir un nuevo módulo, copia un objeto isla aquí. Ver README. <<< */
 ];
+
+/* Normaliza los módulos: cada isla declara su materia y cada reto expone enunciado (en)
+   y respuesta (es), que es lo que lee el motor. Las islas de mates se escriben con q/a. */
+ISLANDS.forEach(isl=>{
+  isl.subject = isl.subject || 'en';
+  isl.vocab.forEach(w=>{
+    if(w.q!==undefined){ w.en=w.q; w.es=String(w.a); }
+    w.subject = isl.subject;
+  });
+});
+
+/* Textos según la materia: el mismo reto se narra distinto en inglés que en matemáticas. */
+const SUBJECT_TEXT={
+  en:  {one:'palabra', many:'palabras', thisOne:'Esta palabra',
+        ask:'¿Qué significa…?', challengeAsk:'¿Qué significa esta palabra?',
+        lead:'Hoy aprenderás la palabra', learned:'Aprendiste',
+        bossHead:'Completa la palabra', unit:'letra', round:'Palabra',
+        clue:'significa', wrongPick:'Esas letras no eran…'},
+  math:{one:'reto', many:'retos', thisOne:'Este reto',
+        ask:'¿Cuánto es…?', challengeAsk:'¿Cuánto es esto?',
+        lead:'Hoy resolverás el reto', learned:'Resolviste',
+        bossHead:'Completa el resultado', unit:'dígito', round:'Reto',
+        clue:'cuánto es', wrongPick:'Esos dígitos no eran…'}
+};
+/* materia del reto mostrado si lo hay (el repaso puede sacar uno de otra isla); si no, la de la isla */
+const T = w => SUBJECT_TEXT[(w && w.subject) || island().subject] || SUBJECT_TEXT.en;
 
 /* equipo de la tienda (común a todas las islas) */
 const SHOP=[
@@ -421,13 +494,13 @@ const SHOP=[
    LOGROS / MEDALLAS
    ---------------------------------------------------------------------- */
 const MEDALS=[
-  {id:'first',     ico:'🌱', name:'Primer paso',  desc:'Aprende tu primera palabra.',
+  {id:'first',     ico:'🌱', name:'Primer paso',  desc:'Aprende tu primera cosa.',
    cond:(s)=>learnedCount()>=1},
-  {id:'student',   ico:'📚', name:'Estudioso',    desc:'Aprende 5 palabras.',
+  {id:'student',   ico:'📚', name:'Estudioso',    desc:'Aprende 5 cosas nuevas.',
    cond:(s)=>learnedCount()>=5},
-  {id:'polyglot',  ico:'🎓', name:'Políglota',    desc:'Aprende 12 palabras.',
+  {id:'polyglot',  ico:'🎓', name:'Políglota',    desc:'Aprende 12 cosas nuevas.',
    cond:(s)=>learnedCount()>=12},
-  {id:'mastery',   ico:'🥇', name:'Maestría',     desc:'Lleva una palabra a dominio ⭐⭐⭐.',
+  {id:'mastery',   ico:'🥇', name:'Maestría',     desc:'Lleva un aprendizaje a dominio ⭐⭐⭐.',
    cond:(s)=>masteredCount()>=1},
   {id:'streak5',   ico:'🔥', name:'En racha',     desc:'Acierta 5 respuestas seguidas.',
    cond:(s,st)=>st.bestStreak>=5},
@@ -496,22 +569,29 @@ const objAt = (x,y)=>OBJECTS.find(o=>o.x===x&&o.y===y);
 const clearedKey = o => island().id+':'+o.id;
 const isCleared = o => !!state.cleared[clearedKey(o)];
 
-/* distractores */
-function meaningPool(){
-  const local=island().vocab.map(w=>w.es);
-  const extra=ALL_VOCAB.map(w=>w.es);
+/* distractores: siempre de la misma materia que el reto (nada de "árbol" en una suma) */
+function meaningPool(subject){
+  const local=island().vocab.filter(w=>w.subject===subject).map(w=>w.es);
+  const extra=ALL_VOCAB.filter(w=>w.subject===subject).map(w=>w.es);
   return [...new Set([...local, ...extra])];
 }
-function buildChoices(correctEs){
-  const others=meaningPool().filter(m=>m!==correctEs);
+/* en mates los señuelos son errores plausibles: contar de uno en uno o fallar la decena */
+function mathChoices(correct){
+  const n=Number(correct);
+  const cands=[n+1,n-1,n+2,n-2];
+  if(n>=10) cands.push(n+10,n-10);   // el error de decena solo tiene sentido a partir de 10
+  const pool=cands.filter(v=>v>0 && v!==n).map(String).filter((v,i,a)=>a.indexOf(v)===i);
+  return shuffle([correct, ...shuffle(pool).slice(0,3)]);
+}
+function buildChoices(w){
+  if(w.subject==='math') return mathChoices(w.es);
+  const others=meaningPool(w.subject).filter(m=>m!==w.es);
   const picks=[];
   while(picks.length<3 && others.length){
     const c=others[Math.floor(Math.random()*others.length)];
     if(!picks.includes(c)) picks.push(c);
   }
-  const opts=[correctEs,...picks];
-  for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
-  return opts;
+  return shuffle([w.es,...picks]);
 }
 function learnedHere(){
   return island().vocab.map(w=>w.id).filter(id=>state.learned[id]);
@@ -968,9 +1048,12 @@ function buildCreeper(){
   return g;
 }
 function grayOut(group){
-  group.traverse(n=>{ if(n.isMesh){ n.material=n.material.clone();
-    if(n.material.color) n.material.color.set(0x9a9a9a);
-    n.material.map=null; n.material.transparent=true; n.material.opacity=.6; n.material.needsUpdate=true; }});
+  // la cabeza del creeper (y la de Steve) lleva un material por cara: hay que clonar el array
+  const gray=m=>{ const c=m.clone();
+    if(c.color) c.color.set(0x9a9a9a);
+    c.map=null; c.transparent=true; c.opacity=.6; c.needsUpdate=true; return c; };
+  group.traverse(n=>{ if(n.isMesh){
+    n.material = Array.isArray(n.material) ? n.material.map(gray) : gray(n.material); }});
 }
 function buildMob(o, done){
   let g;
@@ -1152,7 +1235,7 @@ function refreshActionBtn(){
 }
 function labelFor(o){
   if(o.kind==='teacher') return '💬 Hablar con '+o.name.split(' ').slice(1).join(' ');
-  if(o.kind==='reviewer') return '🔁 Repasar palabras';
+  if(o.kind==='reviewer') return '🔁 Repasar '+T().many;
   if(o.kind==='shop') return '🏪 Entrar a la tienda';
   if(o.kind==='enemies') return isCleared(o)?'✅ Zona despejada':'⚔️ Combatir enemigos';
   if(o.kind==='boss') return state.bossDefeated[island().id]?'🚢 Viajar de isla':'⚔️ Enfrentar al jefe';
@@ -1242,9 +1325,9 @@ function openMedals(){
 function nextObjective(){
   if(state.bossDefeated[island().id])
     return {ico:'🚢', text:'¡Isla liberada! Acércate al muelle y <b>viaja</b> a la siguiente.'};
-  const learned=learnedCount();
+  const learned=learnedHere().length;
   if(learned<3)
-    return {ico:'💬', text:`Habla con los aldeanos y aprende <b>${3-learned}</b> palabra(s) más.`};
+    return {ico:'💬', text:`Habla con los aldeanos y aprende <b>${3-learned}</b> ${T().one}(s) más de esta isla.`};
   if(!state.gear.sword)
     return {ico:'🏪', text:'Ve a la <b>tienda</b> 🏪 y consigue una <b>espada</b>.'};
   return {ico:'👹', text:'¡Listo para el <b>jefe</b>! Acércate a él y vence con lo aprendido.'};
@@ -1281,7 +1364,7 @@ function talkTeacher(o){
   const w=byId(next);
   openPanel(`<h2>${o.face} ${o.name}</h2>
     <div class="speaker"><div class="face">${o.face}</div>
-      <div class="bubble">Hoy aprenderás la palabra <b>“${w.en}”</b>.<br><br>
+      <div class="bubble">${T(w).lead} <b>“${w.en}”</b>.<br><br>
       Mi pista: <b>${w.hint}</b><br><br>No te doy la respuesta: dedúcela tú. ¿Ya sabes qué significa?</div></div>
     <div class="panel-actions">
       <button class="btn ghost" onclick="closePanel()">Después</button>
@@ -1289,14 +1372,15 @@ function talkTeacher(o){
     </div>`);
 }
 function learnChallenge(id){
-  const w=byId(id); const opts=buildChoices(w.es);
-  openPanel(`<h2>💡 ¿Qué significa…?</h2>
+  const w=byId(id); const opts=buildChoices(w);
+  openPanel(`<h2>💡 ${T(w).ask}</h2>
     <div class="wordbig">${w.en}</div>
     <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
     <div class="feedback" id="fb"></div>`);
   panel.querySelectorAll('.choice').forEach(btn=>btn.addEventListener('click',()=>resolveLearn(btn,id,w.es)));
 }
 function resolveLearn(btn,id,correct){
+  const w=byId(id);
   const right=btn.dataset.v===correct;
   panel.querySelectorAll('.choice').forEach(b=>{b.disabled=true;
     if(b.dataset.v===correct)b.classList.add('correct'); else if(b===btn)b.classList.add('wrong');});
@@ -1304,7 +1388,7 @@ function resolveLearn(btn,id,correct){
   if(right){
     state.learned[id]={mastery:1, rusty:false};
     state.gems+=2; recordAnswer(true); updateHUD(); maybeRust(); saveState();
-    fb.className='feedback good'; fb.textContent=`¡Correcto! Aprendiste “${byId(id).en}”. +2 💎`;
+    fb.className='feedback good'; fb.textContent=`¡Correcto! ${T(w).learned} “${w.en}”. +2 💎`;
     addAction(`<button class="btn" onclick="closePanel()">Seguir</button>`);
   }else{
     recordAnswer(false);
@@ -1320,7 +1404,7 @@ function maybeRust(){
   if(state.actionsSinceRust>=3 && fresh.length>=2){
     const pick=fresh[Math.floor(Math.random()*fresh.length)];
     state.learned[pick].rusty=true; state.actionsSinceRust=0;
-    toast('🔁 Una palabra se oxidó: visita al guía de repaso', true);
+    toast('🔁 Algo se te está oxidando: visita al guía de repaso', true);
   }
 }
 function talkReviewer(o){
@@ -1328,14 +1412,14 @@ function talkReviewer(o){
   if(rusty.length===0){
     openPanel(`<h2>🔁 ${o.name}</h2>
       <div class="speaker"><div class="face">${o.face}</div>
-      <div class="bubble">¡Tienes todas tus palabras frescas! No hay nada que repasar ahora. 🌿</div></div>
+      <div class="bubble">¡Lo tienes todo fresco! No hay nada que repasar ahora. 🌿</div></div>
       <div class="panel-actions"><button class="btn" onclick="closePanel()">Genial</button></div>`);
     return;
   }
-  const id=rusty[0], w=byId(id), opts=buildChoices(w.es);
+  const id=rusty[0], w=byId(id), opts=buildChoices(w);
   openPanel(`<h2>🔁 ${o.name}</h2>
     <div class="speaker"><div class="face">${o.face}</div>
-    <div class="bubble">Esta palabra se te está olvidando. ¡Refréscala! (quedan ${rusty.length} por repasar)</div></div>
+    <div class="bubble">${T(w).thisOne} se te está olvidando. ¡A refrescarlo! (quedan ${rusty.length} por repasar)</div></div>
     <div class="wordbig">${w.en}</div>
     <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
     <div class="feedback" id="fb"></div>`);
@@ -1348,12 +1432,12 @@ function talkReviewer(o){
       state.learned[id].rusty=false;
       state.learned[id].mastery=Math.min(3,state.learned[id].mastery+1);
       state.gems+=1; recordAnswer(true); updateHUD(); saveState();
-      fb.className='feedback good'; fb.textContent='¡Refrescada! Tu dominio subió. +1 💎';
-      addAction(`<button class="btn" onclick="talkReviewer(OBJECTS.find(o=>o.id==='${o.id}'))">Repasar otra</button>
+      fb.className='feedback good'; fb.textContent='¡Muy bien! Tu dominio subió. +1 💎';
+      addAction(`<button class="btn" onclick="talkReviewer(OBJECTS.find(o=>o.id==='${o.id}'))">Seguir repasando</button>
                  <button class="btn ghost" onclick="closePanel()">Salir</button>`);
     }else{
       recordAnswer(false);
-      fb.className='feedback bad'; fb.textContent='No pasa nada, repásala otra vez.';
+      fb.className='feedback bad'; fb.textContent='No pasa nada, inténtalo otra vez.';
       addAction(`<button class="btn" onclick="talkReviewer(OBJECTS.find(o=>o.id==='${o.id}'))">Reintentar</button>`);
     }
   }));
@@ -1372,18 +1456,18 @@ function openShop(o){
     </div>`;}).join('');
   openPanel(`<h2>🏪 ${o.name}</h2>
     <div class="speaker"><div class="face">🧔</div>
-    <div class="bubble">Tienes <b>${state.gems} 💎</b>. Elige tu equipo. Aquí no se paga solo con gemas: <b>demuéstrame que aprendiste</b> una palabra.</div></div>
+    <div class="bubble">Tienes <b>${state.gems} 💎</b>. Elige tu equipo. Aquí no se paga solo con gemas: <b>demuéstrame lo que aprendiste</b>.</div></div>
     ${items}
     <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Salir</button></div>`);
 }
 function buyFlow(key){
   const item=SHOP.find(s=>s.key===key);
-  if(Object.keys(state.learned).length===0){ toast('Aprende una palabra primero',true); return; }
+  if(Object.keys(state.learned).length===0){ toast('Aprende algo primero',true); return; }
   const id=anyLearnedId();
-  const w=byId(id), opts=buildChoices(w.es);
+  const w=byId(id), opts=buildChoices(w);
   openPanel(`<h2>🤝 Demuestra para pagar</h2>
     <div class="speaker"><div class="face">🧔</div>
-    <div class="bubble">Para llevarte el <b>${item.name}</b>, dime: ¿qué significa esta palabra?</div></div>
+    <div class="bubble">Para llevarte el <b>${item.name}</b>, dime: ${T(w).challengeAsk}</div></div>
     <div class="wordbig">${w.en}</div>
     <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
     <div class="feedback" id="fb"></div>`);
@@ -1414,10 +1498,10 @@ function startCombat(o){
       <div class="panel-actions"><button class="btn" onclick="closePanel()">Cerrar</button></div>`);
     return;
   }
-  if(Object.keys(state.learned).length<2){
+  if(learnedHere().length<2){
     openPanel(`<h2>⚔️ ${o.name}</h2>
       <div class="speaker"><div class="face">${o.face}</div>
-      <div class="bubble">Aprende al menos <b>2 palabras</b> con los aldeanos para tener con qué luchar.</div></div>
+      <div class="bubble">Aprende al menos <b>2 ${T().many}</b> de esta isla con los aldeanos para tener con qué luchar.</div></div>
       <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
     return;
   }
@@ -1427,7 +1511,7 @@ function startCombat(o){
 }
 function combatTurn(){
   if(combat.killed>=combat.total){ combatWin(); return; }
-  const id=anyLearnedId(), w=byId(id), opts=buildChoices(w.es);
+  const id=anyLearnedId(), w=byId(id), opts=buildChoices(w);
   let row='';
   for(let i=0;i<combat.total;i++) row+=`<div class="enemy ${i<combat.killed?'dead':''}">${i<combat.killed?'💀':combat.face}</div>`;
   openPanel(`<h2>⚔️ ${combat.obj.name}</h2>
@@ -1435,7 +1519,7 @@ function combatTurn(){
     <div class="enemy-row">${row}</div>
     <div class="bossbar selfbar" style="margin-bottom:10px"><i style="width:${state.hp/state.maxHp*100}%"></i></div>
     <div class="speaker"><div class="face">${combat.face}</div>
-    <div class="bubble">¡Atácalos! ¿Qué significa esta palabra?</div></div>
+    <div class="bubble">¡Atácalos! ${T(w).challengeAsk}</div></div>
     <div class="wordbig">${w.en}</div>
     <div class="choices">${opts.map(op=>`<button class="choice" data-v="${op}">${op}</button>`).join('')}</div>
     <div class="feedback" id="fb"></div>`);
@@ -1482,24 +1566,31 @@ function combatWin(){
     <div class="panel-actions"><button class="btn" onclick="closePanel()">¡Genial!</button></div>`);
 }
 
-/* ---------- Jefe: completar 5 palabras con letras faltantes ---------- */
+/* ---------- Jefe: completar 5 retos con letras (inglés) o dígitos (mates) faltantes ---------- */
 let bossFight=null;
 const ALPHA='abcdefghijklmnopqrstuvwxyz';
+const DIGITS='0123456789';
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function pickBossWords(){
+  const subj=island().subject;
   let pool=island().vocab.filter(w=>state.learned[w.id]);
   if(pool.length<5){
-    const extra=ALL_VOCAB.filter(w=>state.learned[w.id] && !pool.includes(w));
+    const extra=ALL_VOCAB.filter(w=>state.learned[w.id] && w.subject===subj && !pool.includes(w));
     pool=pool.concat(extra);
   }
-  pool=pool.slice().sort((a,b)=>a.en.length-b.en.length);
+  if(!pool.length) pool=island().vocab.slice();
+  pool=pool.slice().sort(subj==='math'
+    ? (a,b)=>Number(a.es)-Number(b.es)          // de resultados pequeños a grandes
+    : (a,b)=>a.en.length-b.en.length);          // de palabras cortas a largas
   const picks=[];
   for(let i=0;i<5;i++) picks.push(pool[i<pool.length?i:pool.length-1]);
   return picks;
 }
-function makeLetterPool(missing){
+function makeLetterPool(missing, math){
+  const chars=math?DIGITS:ALPHA;
   const set=new Set(missing), decoys=[];
-  while(decoys.length<4){ const c=ALPHA[Math.floor(Math.random()*26)];
+  const want=Math.min(4, chars.length-set.size);
+  while(decoys.length<want){ const c=chars[Math.floor(Math.random()*chars.length)];
     if(!set.has(c)&&!decoys.includes(c)) decoys.push(c); }
   return shuffle([...new Set(missing), ...decoys]);
 }
@@ -1511,10 +1602,10 @@ function startBoss(o){
       <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
     return;
   }
-  if(Object.keys(state.learned).length<3){
+  if(learnedHere().length<3){
     openPanel(`<h2>${o.face} ${o.name}</h2>
       <div class="speaker"><div class="face">${o.face}</div>
-      <div class="bubble">Aprende al menos <b>3 palabras</b> con los aldeanos antes de enfrentarme.</div></div>
+      <div class="bubble">Aprende al menos <b>3 ${T().many}</b> de esta isla con los aldeanos antes de enfrentarme.</div></div>
       <div class="panel-actions"><button class="btn ghost" onclick="closePanel()">Volver</button></div>`);
     return;
   }
@@ -1525,12 +1616,16 @@ function startBoss(o){
 function bossWord(){
   const bf=bossFight; if(!bf) return;
   if(bf.idx>=5){ winBoss(bf.o); return; }
-  const word=bf.words[bf.idx].en.toLowerCase();
+  const item=bf.words[bf.idx];
+  const math=item.subject==='math';
+  // inglés: se completa la palabra y la pista es su significado
+  // mates:  se completa el resultado y la pista es la operación
+  const word=(math?item.es:item.en).toLowerCase();
   const hide=Math.min(bf.idx+1, word.length);
   const idxs=shuffle([...Array(word.length).keys()]).slice(0,hide).sort((a,b)=>a-b);
-  bf.word=word; bf.es=bf.words[bf.idx].es; bf.positions=idxs;
+  bf.word=word; bf.math=math; bf.clue=math?item.en:item.es; bf.positions=idxs;
   bf.slots=new Array(hide).fill(null);
-  bf.pool=makeLetterPool(idxs.map(p=>word[p]));
+  bf.pool=makeLetterPool(idxs.map(p=>word[p]), math);
   bf.feedback=null; bf.done=false;
   bossRender();
 }
@@ -1547,18 +1642,19 @@ function bossRender(){
   const fb=bf.feedback?`<div class="feedback ${bf.feedback.cls}">${bf.feedback.text}</div>`:`<div class="feedback"></div>`;
   let actions;
   if(bf.done){
-    actions=`<button class="btn gold" id="nextWord">${bf.idx>=5?'🏆 ¡Vencer al jefe!':'Siguiente palabra ▶'}</button>`;
+    actions=`<button class="btn gold" id="nextWord">${bf.idx>=5?'🏆 ¡Vencer al jefe!':'Siguiente '+T().one+' ▶'}</button>`;
   }else{
     actions=`<button class="btn ghost" id="bossDel">⌫ Borrar</button>
              <button class="btn ghost" onclick="closePanel()">Huir</button>`;
   }
   openPanel(`<div class="bosswrap">
       <div class="boss-face" id="bossFace">${o.face}</div>
-      <div class="barlabel">${o.name} — Palabra ${Math.min(bf.idx+1,5)}/5</div>
+      <div class="barlabel">${o.name} — ${T().round} ${Math.min(bf.idx+1,5)}/5</div>
       <div class="bossbar selfbar" style="margin-top:2px"><i id="selfHp" style="width:${state.hp/state.maxHp*100}%"></i></div>
     </div>
-    <p style="margin:12px 0 4px;font-weight:800;text-align:center">Completa la palabra · faltan <b>${bf.positions.length}</b> letra(s)<br>
-      <span style="font-weight:600;opacity:.85">Pista: significa <b>“${bf.es}”</b></span></p>
+    <p style="margin:12px 0 4px;font-weight:800;text-align:center">${T().bossHead} · faltan <b>${bf.positions.length}</b> ${T().unit}(s)${bf.math?'':`<br>
+      <span style="font-weight:600;opacity:.85">Pista: ${T().clue} <b>“${bf.clue}”</b></span>`}</p>
+    ${bf.math?`<div class="wordbig">${bf.clue} =</div>`:''}
     <div class="lett-word">${disp}</div>
     <div class="lett-pool">${pool}</div>
     ${fb}
@@ -1587,7 +1683,7 @@ function bossCheck(){
   const ok=bf.positions.every((p,k)=>bf.slots[k]===word[p]);
   if(ok){
     recordAnswer(true); bf.idx++; bf.done=true; saveState();
-    bf.feedback={cls:'good', text: bf.idx>=5?'¡Última palabra completada! 🎉':'¡Palabra completada! 🎉'};
+    bf.feedback={cls:'good', text: bf.idx>=5?'¡Y la última! 🎉':'¡Completado! 🎉'};
     bossRender();
   }else{
     recordAnswer(false);
@@ -1595,7 +1691,7 @@ function bossCheck(){
     updateHUD(); saveState();
     if(state.hp<=0){ defeated('El jefe te superó esta vez. ¡Equípate mejor y vuelve!'); return; }
     bf.slots=new Array(bf.positions.length).fill(null);
-    bf.feedback={cls:'bad', text:`Esas letras no eran… (-${dmg} ❤️). Mira la pista y reintenta.`};
+    bf.feedback={cls:'bad', text:`${T().wrongPick} (-${dmg} ❤️). Mira la pista y reintenta.`};
     bossRender();
   }
 }
@@ -1617,7 +1713,7 @@ function defeated(msg){
   state.hp=state.maxHp; updateHUD(); saveState();
   openPanel(`<h2>💫 Te recuperas</h2>
     <div class="speaker"><div class="face">😵</div>
-    <div class="bubble">${msg} No pierdes tu progreso: aprende o repasa más palabras y compra más armadura antes de volver.</div></div>
+    <div class="bubble">${msg} No pierdes tu progreso: aprende o repasa un poco más y compra más armadura antes de volver.</div></div>
     <div class="panel-actions"><button class="btn" onclick="closePanel()">Entendido</button></div>`);
 }
 
@@ -1648,7 +1744,7 @@ function travelTo(idx){
   toast('Llegaste a '+ISLANDS[idx].name);
 }
 
-/* ---------- Banco de palabras ---------- */
+/* ---------- Cuaderno de lo aprendido ---------- */
 document.getElementById('bankBtn').addEventListener('click',openBank);
 document.getElementById('medalStat').addEventListener('click',openMedals);
 document.getElementById('helpBtn').addEventListener('click',showHelp);
@@ -1682,7 +1778,7 @@ function openProfile(){
       ${figure}
       <div class="prof-meta">
         <div class="prof-name">${escapeHtml(state.name)}</div>
-        <div class="prof-stats">💎 ${state.gems} &nbsp; 📖 ${learnedCount()} palabras</div>
+        <div class="prof-stats">💎 ${state.gems} &nbsp; 📖 ${learnedCount()} aprendidos</div>
         <div class="prof-stats">🏅 ${got}/${MEDALS.length} logros</div>
         <div class="prof-stats">🛡️ Equipo: ${owned}/${SHOP.length}</div>
         <button class="btn ghost" id="editNameBtn">✏️ Editar nombre</button>
@@ -1719,10 +1815,10 @@ function openBank(){
       <div class="wb-en">${w.en}</div><div class="wb-es">${w.es}</div>
       <div class="wb-mast">Dominio: ${stars(s.mastery)}</div>
       ${s.rusty?'<div class="wb-rusty-tag">⚠ por repasar</div>':''}</div>`;}).join('')
-    : '<div class="empty">Aún no aprendes palabras.<br>Habla con un aldeano (💬) para empezar.</div>';
+    : '<div class="empty">Aún no has aprendido nada.<br>Habla con un aldeano (💬) para empezar.</div>';
   const p=islandProgress();
-  openPanel(`<h2>📖 Mis palabras (${ids.length})</h2>
-    <p style="font-size:13px;opacity:.85;margin-bottom:6px">Tus palabras son tu moneda y tu fuerza. Más dominio = más daño.</p>
+  openPanel(`<h2>📖 Mi cuaderno (${ids.length})</h2>
+    <p style="font-size:13px;opacity:.85;margin-bottom:6px">Lo que aprendes es tu moneda y tu fuerza. Más dominio = más daño.</p>
     <div class="wb-sub">${island().name}: ${p.done}/${p.total} aprendidas</div>
     <div class="wb-grid">${cards}</div>
     <div class="panel-actions">
@@ -1734,7 +1830,7 @@ function openBank(){
 function confirmReset(){
   openPanel(`<h2>↺ Reiniciar progreso</h2>
     <div class="speaker"><div class="face">⚠️</div>
-    <div class="bubble">Esto borra tus palabras, gemas y equipo. ¿Seguro?</div></div>
+    <div class="bubble">Esto borra todo lo aprendido, tus gemas y tu equipo. ¿Seguro?</div></div>
     <div class="panel-actions">
       <button class="btn ghost" onclick="openBank()">Cancelar</button>
       <button class="btn danger" onclick="resetGame()">Sí, reiniciar</button></div>`);
@@ -1746,7 +1842,7 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   // Atajos dentro de los retos: 1-4 elige opción, letras rellenan al jefe, Enter avanza.
   if(overlay.classList.contains('show')){
-    if(/^[a-z]$/.test(k)){
+    if(/^[a-z0-9]$/.test(k)){
       const lb=[...panel.querySelectorAll('.lett-btn:not(:disabled)')].find(b=>b.dataset.l===k);
       if(lb){ lb.click(); e.preventDefault(); return; }
     }
@@ -1794,15 +1890,15 @@ document.querySelectorAll('.dpad button').forEach(b=>{
 /* ---------- Intro / Ayuda ---------- */
 const NPC_LEGEND=`<div class="bubble" style="margin-top:10px;font-size:13px">
     <b>¿Quién es quién?</b><br>
-    💬 Maestro: te da pistas para aprender · 🔁 Repaso: refresca palabras
+    💬 Maestro: te da pistas para aprender · 🔁 Repaso: refresca lo aprendido
     · 🏪 Tienda: compra equipo demostrando lo aprendido
     · ⚔️ Enemigos: combate · 👹 Jefe: vencelo para abrir la siguiente isla.</div>`;
 function intro(){
   openPanel(`<h2 class="pixel" style="font-size:12px">APRENDER JUGANDO · 3D</h2>
     <div class="speaker"><div class="face">🏝️</div>
     <div class="bubble">Explora la <b>${island().name}</b> ahora <b>en 3D, en tercera persona</b> (sigues a tu personaje). Para liberarla:
-    <br>1️⃣ Habla con los aldeanos: te dan <b>pistas</b>, no respuestas. Tú deduces la palabra.
-    <br>2️⃣ Cada palabra aprendida es <b>moneda y fuerza</b>.
+    <br>1️⃣ Habla con los aldeanos: te dan <b>pistas</b>, no respuestas. Tú deduces la respuesta.
+    <br>2️⃣ Cada cosa que aprendes es <b>moneda y fuerza</b>.
     <br>3️⃣ Despeja enemigos, compra equipo y vence al <b>jefe</b> para abrir la siguiente isla.
     <br><br>🕹️ <b>Recorre el mapa en 3D:</b> ▲▼ (o W/S) para caminar y retroceder, ◀▶ (o A/D) para girar, y <b>arrastra</b> sobre el mundo para orbitar la cámara. Acércate a alguien y pulsa <b>E</b> (o el botón dorado) para interactuar.
     <br>En los retos puedes pulsar <b>1–4</b> para responder y <b>Enter</b> para continuar.</div></div>
@@ -1812,13 +1908,14 @@ function intro(){
 function showHelp(){
   openPanel(`<h2>❓ Ayuda</h2>
     <div class="speaker"><div class="face">🗺️</div>
-    <div class="bubble"><b>Objetivo:</b> lo que aprendes es tu moneda y tu arma. Aprende palabras,
-    equípate en la tienda y vence al jefe para abrir nuevas islas.<br><br>
+    <div class="bubble"><b>Objetivo:</b> lo que aprendes es tu moneda y tu arma. Aprende palabras
+    en inglés o resuelve retos de matemáticas, equípate en la tienda y vence al jefe para abrir
+    nuevas islas.<br><br>
     <b>Controles 3D:</b> ▲▼ o <b>W/S</b> avanzar/retroceder · ◀▶ o <b>A/D</b> girar
     · <b>arrastra</b> sobre el mundo para mirar · interactuar con <b>E</b> o el botón dorado
     · menú de viaje con <b>M</b> · cerrar con <b>Esc</b>.<br>
     En los retos: teclas <b>1–4</b> para elegir y <b>Enter</b> para avanzar.<br><br>
-    Gana <b>🏅 logros</b> por tus hitos: míralos en el HUD o en 📖 Mis palabras.</div></div>
+    Gana <b>🏅 logros</b> por tus hitos: míralos en el HUD o en 📖 Mi cuaderno.</div></div>
     ${NPC_LEGEND}
     <div class="panel-actions"><button class="btn gold" onclick="closePanel()">Entendido</button></div>`);
 }

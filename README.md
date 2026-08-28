@@ -31,6 +31,20 @@ El progreso se guarda solo en `localStorage`.
   **animales** (mobs cúbicos) que deambulan por el bioma. Todo procedural,
   sin assets externos.
 
+## Islas
+
+| # | Isla | Módulo |
+|---|------|--------|
+| 1 | Isla Niebla | Inglés · saludos y básicos |
+| 2 | Isla del Bosque | Inglés · naturaleza |
+| 3 | **Isla de los Números** | **Matemáticas · 6 a 9 años** |
+
+La **Isla de los Números** se desbloquea al vencer al Dragón del Bosque. Trae 12
+retos repartidos en dos niveles: la *Maestra Suma* (6–7 años: sumas y restas hasta
+20, dobles, mitades y sumandos que faltan) y el *Profe Múltiplo* (8–9 años: tablas
+del 2, 5 y 10, sumas y restas con decenas, y repartos). El jefe pide **completar
+los dígitos** del resultado en vez de las letras de una palabra.
+
 ## Añadir contenido (mismo modelo data-driven que la 2D)
 
 El juego sigue siendo 100% data-driven. Para sumar un módulo nuevo, copia un
@@ -38,3 +52,14 @@ objeto isla dentro del array `ISLANDS` en `index.html`: define `map` (rejilla de
 tiles), `spawn`, `vocab` y `objects` (maestros, repaso, tienda, enemigos y jefe).
 No hace falta tocar el motor 3D: la isla se construye automáticamente desde su
 `map`.
+
+Cada isla declara su **materia** con `subject`:
+
+- `subject:'en'` (por defecto) — los retos son `{id, en, es, hint}`: palabra en
+  inglés, significado en español y una pista que no da la respuesta.
+- `subject:'math'` — los retos son `{id, q, a, hint}`: `q` es el enunciado, `a` la
+  respuesta y `hint` la **estrategia** para llegar a ella. Escribe los enunciados
+  en ASCII (`+ - x :`), porque la fuente pixel no tiene glifos para `×` ni `÷`.
+
+La materia decide los distractores de las opciones (números parecidos en mates,
+significados en inglés), los textos de los diálogos y el tipo de reto del jefe.
